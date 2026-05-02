@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: localhost
--- Generation Time: May 02, 2026 at 03:13 PM
--- Server version: 10.4.28-MariaDB
--- PHP Version: 8.2.4
+-- Host: 127.0.0.1
+-- Generation Time: May 02, 2026 at 07:56 PM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -43,6 +43,16 @@ CREATE TABLE `billings` (
   `current_reading_image` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `billings`
+--
+
+INSERT INTO `billings` (`id`, `resident_id`, `billing_month`, `previous_reading`, `current_reading`, `usage_m3`, `amount_due`, `status`, `paid_date`, `receipt_no`, `remarks`, `previous_reading_image`, `current_reading_image`) VALUES
+(64, 34, 'May 2026', 0, 17, 17, 572.90, 'paid', '2026-05-02 18:46:04', 'MV-2026-0064', NULL, NULL, NULL),
+(65, 34, 'Jun 2026', 17, 0, 0, 0.00, 'pending', NULL, NULL, NULL, NULL, NULL),
+(66, 35, 'May 2026', 0, 67, 67, 2257.90, 'unpaid', NULL, NULL, 'test101', NULL, NULL),
+(67, 35, 'Jun 2026', 0, 0, 0, 0.00, 'pending', NULL, NULL, NULL, NULL, NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -64,6 +74,14 @@ CREATE TABLE `residents` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `residents`
+--
+
+INSERT INTO `residents` (`id`, `household_id`, `block_no`, `lot_no`, `full_name`, `initial_meter`, `monthly_rate`, `contact_number`, `email`, `status`, `access_token`, `created_at`) VALUES
+(34, 'BT-0001', 'Blk 1', 'Lot 1', 'Ian Reyes', 0, 33.70, '0912-345-6789', 'ianreyes1818@gmail.com', 'paid', '01995111ff125df550195b9dbde1ab18', '2026-05-02 15:44:36'),
+(35, 'BT-0002', 'Blk 6', 'Lot 7', 'Justin Basco', 0, 33.70, '0967-768-1303', 'reignbasco29@gmail.com', 'paid', 'ab64915a09a462353d2ea7822a22957b', '2026-05-02 15:45:29');
+
 -- --------------------------------------------------------
 
 --
@@ -81,7 +99,7 @@ CREATE TABLE `settings` (
 --
 
 INSERT INTO `settings` (`setting_key`, `setting_value`, `description`) VALUES
-('current_rate', '50.70', 'Price per cubic meter for water usage'),
+('current_rate', '33.70', 'Price per cubic meter for water usage'),
 ('smtp_from_email', 'bayantap58@gmail.com', NULL),
 ('smtp_from_name', 'BayanTap Water District', NULL),
 ('smtp_host', 'smtp.gmail.com', NULL),
@@ -101,8 +119,16 @@ CREATE TABLE `transactions` (
   `resident_id` int(11) NOT NULL,
   `amount_paid` decimal(10,2) NOT NULL,
   `payment_date` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` enum('complete','partial') DEFAULT NULL,
   `treasurer_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `transactions`
+--
+
+INSERT INTO `transactions` (`id`, `receipt_no`, `resident_id`, `amount_paid`, `payment_date`, `status`, `treasurer_id`) VALUES
+(14, 'MV-2026-0064', 34, 572.90, '2026-05-02 16:46:04', 'complete', 3);
 
 -- --------------------------------------------------------
 
@@ -114,7 +140,7 @@ CREATE TABLE `users` (
   `id` int(11) NOT NULL,
   `username` varchar(50) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
-  `role` enum('treasurer','superuser') DEFAULT 'treasurer',
+  `role` enum('treasurer','admin') DEFAULT 'treasurer',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -123,8 +149,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `password_hash`, `role`, `created_at`) VALUES
-(1, 'treasurer', '$2y$10$WMNoVjBHd3pKXEy0swnE4ObanwTSi4nPzLH2uW/BlUfhRODxsaOem', 'treasurer', '2026-04-03 11:54:08'),
-(3, 'admin', '$2y$10$zdp15ZP5QsngIuNtSsbiFOrbENXIBRTZdF66FRwmJdNcPM.Vl8boO', 'superuser', '2026-04-22 08:15:52');
+(1, 'treasurer', '$2y$10$yE6nE4mpUIkW1xh4FsqEy.osgCKQx3vmzS8idVk9psPvduh4kkRRi', 'treasurer', '2026-04-03 11:54:08'),
+(3, 'admin', '$2y$10$NU1SA5nTdK44QsEl5XsYEeMccBYz4dB/fecmDyJlSq67/xDV9pkL6', 'admin', '2026-04-22 08:15:52');
 
 --
 -- Indexes for dumped tables
@@ -174,19 +200,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `billings`
 --
 ALTER TABLE `billings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=68;
 
 --
 -- AUTO_INCREMENT for table `residents`
 --
 ALTER TABLE `residents`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
 --
 -- AUTO_INCREMENT for table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `users`
