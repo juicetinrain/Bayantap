@@ -46,7 +46,7 @@ $total_delinquent_amount = array_sum(array_column($overdue_residents, 'total_ove
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BayanTap – Overdue Accounts</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="dashboard.css?v=5">
+    <link rel="stylesheet" href="CSS/dashboard.css?v=5">
     <link rel="stylesheet" href="CSS/overdue.css">
 </head>
 <body>

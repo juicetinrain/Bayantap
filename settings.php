@@ -21,7 +21,7 @@ $smtp_from_name = get_setting('smtp_from_name', 'BayanTap Water District');
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BayanTap – System Settings</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="dashboard.css?v=5">
+  <link rel="stylesheet" href="CSS/dashboard.css?v=5">
   <style>
     .settings-container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
     .settings-card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 32px; }
