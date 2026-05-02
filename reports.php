@@ -261,7 +261,7 @@ foreach($trend_data_raw as $row) {
       <div class="chart-card">
         <div class="chart-card-header">
             <h3>Payment Status</h3>
-            <p><?= htmlspecialchars($selected_month) ?> Billing Cycle</p>
+            <p><?= htmlspecialchars($is_yearly ? $selected_year : $selected_period) ?> Billing Cycle</p>
         </div>
         <div class="canvas-container canvas-container-pie">
             <canvas id="statusChart"></canvas>
