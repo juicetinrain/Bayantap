@@ -489,14 +489,13 @@ $system_rate = get_setting('current_rate', '33.70');
           </div>
           <div class="form-group">
             <label>Amount Due (₱)</label>
-            <input type="number" id="edit-amount" placeholder="e.g. 575.00" min="0" step="0.01" readonly
-              style="background:var(--gray-50);color:var(--gray-700);font-weight:700;">
+            <input type="number" id="edit-amount" placeholder="e.g. 575.00" min="0" step="0.01" readonly style ="background: var(--gray-50); cursor: not-allowed; color: var(--gray-500); border-color: var(--gray-200);">
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Previous Reading</label>
-            <input type="number" id="edit-prev" placeholder="e.g. 1245" min="0">
+            <input type="number" id="edit-prev" placeholder="e.g. 1245" min="0" readonly style ="background: var(--gray-50); cursor: not-allowed; color: var(--gray-500); border-color: var(--gray-200);">
           </div>
           <div class="form-group">
             <label>Current Reading</label>

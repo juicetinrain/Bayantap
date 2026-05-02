@@ -7,13 +7,9 @@ if (!isset($_SESSION['user_id'])) {
 require_once 'db_connect.php';
 
 $search_q = $_GET['q'] ?? '';
-$search_month = $_GET['month'] ?? '';
+$search_date = $_GET['date'] ?? '';
 $search_type = $_GET['type'] ?? '';
 $search_status = $_GET['status'] ?? '';
-
-// Fetch available months dynamically from transactions
-$mStmt = $pdo->query("SELECT DISTINCT DATE_FORMAT(payment_date, '%b %Y') AS m FROM transactions ORDER BY payment_date ASC");
-$available_months = $mStmt->fetchAll(PDO::FETCH_COLUMN);
 
 // Build WHERE clauses safely
 $where_clauses = ["1=1"];
@@ -27,9 +23,9 @@ if ($search_q !== '') {
     $params[] = "%$search_q%";
 }
 
-if ($search_month !== '') {
-    $where_clauses[] = "DATE_FORMAT(t.payment_date, '%b %Y') = ?";
-    $params[] = $search_month;
+if ($search_date !== '') {
+    $where_clauses[] = "DATE(t.payment_date) = ?";
+    $params[] = $search_date;
 }
 
 if ($search_type !== '') {
@@ -38,7 +34,11 @@ if ($search_type !== '') {
 }
 
 if ($search_status !== '') {
-    // Transactions imply completed status historically, but you can expand this if needed
+    if ($search_status === 'partial') {
+        $where_clauses[] = "EXISTS (SELECT 1 FROM billings b WHERE b.receipt_no = t.receipt_no AND b.amount_due > t.amount_paid)";
+    } elseif ($search_status === 'completed') {
+        $where_clauses[] = "NOT EXISTS (SELECT 1 FROM billings b WHERE b.receipt_no = t.receipt_no AND b.amount_due > t.amount_paid)";
+    }
 }
 
 $where_sql = implode(' AND ', $where_clauses);
@@ -62,12 +62,12 @@ $avg_tx = "₱" . number_format($txStats['avg_tx'] ?? 0, 2);
 // EXCLUDE FUTURE MONTHS from the total, so we only count cycles up to the current date
 $current_month_str = date('M Y');
 
-if ($search_month !== '') {
+if ($search_date !== '') {
     $collStmt = $pdo->prepare("SELECT 
         COUNT(*) as total,
         SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid
-        FROM billings WHERE billing_month = ?");
-    $collStmt->execute([$search_month]);
+        FROM billings WHERE DATE(paid_date) = ?");
+    $collStmt->execute([$search_date]);
 } else {
     $collStmt = $pdo->prepare("SELECT 
         COUNT(*) as total,
@@ -87,6 +87,8 @@ $total_pages = max(1, ceil($raw_total_tx / $limit));
 $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
 $page = max(1, min($page, $total_pages));
 $offset = ($page - 1) * $limit;
+$query_params = $_GET;
+unset($query_params['page']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -122,12 +124,12 @@ $offset = ($page - 1) * $limit;
             <div class="summary-card">
                 <div class="summary-label">Total Transactions</div>
                 <div class="summary-value"><?= $total_tx ?></div>
-                <div class="summary-sub"><?= $search_month ?: 'Overall' ?></div>
+                <div class="summary-sub"><?= $search_date ? date('F j, Y', strtotime($search_date)) : 'Overall' ?></div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Total Collected</div>
                 <div class="summary-value"><?= $total_collected ?></div>
-                <div class="summary-sub"><?= $search_month ?: 'All time' ?></div>
+                <div class="summary-sub"><?= $search_date ? date('F j, Y', strtotime($search_date)) : 'All time' ?></div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Avg. Transaction</div>
@@ -159,19 +161,13 @@ $offset = ($page - 1) * $limit;
                     </select>
                 </div>
                 <div class="filter-wrap">
-                    <select name="month" class="filter-select" onchange="this.form.submit()">
-                        <option value="">All Months</option>
-                        <?php foreach ($available_months as $m): ?>
-                            <option value="<?= htmlspecialchars($m) ?>" <?= $m === $search_month ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($m) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <input type="date" name="date" class="filter-select" value="<?= htmlspecialchars($search_date) ?>" onchange="this.form.submit()">
                 </div>
                 <div class="filter-wrap">
                     <select name="status" class="filter-select" onchange="this.form.submit()">
                         <option value="" <?= $search_status === '' ? 'selected' : '' ?>>All Status</option>
-                        <option value="completed" <?= $search_status === 'completed' ? 'selected' : '' ?>>Completed
-                        </option>
+                        <option value="completed" <?= $search_status === 'completed' ? 'selected' : '' ?>>Completed</option>
+                        <option value="partial" <?= $search_status === 'partial' ? 'selected' : '' ?>>Partial Payment</option>
                     </select>
                 </div>
             </div>
@@ -182,7 +178,7 @@ $offset = ($page - 1) * $limit;
             <div class="table-card-header">
                 <div class="table-card-header-title">
                     <h2>All Transactions</h2>
-                    <p>Showing all payments and account adjustments · January 2026</p>
+                    <p>Showing all payments and account adjustments · <?= $search_date ? date('F j, Y', strtotime($search_date)) : 'All time' ?></p>
                 </div>
                 <button class="export-btn">📥 Export</button>
             </div>
@@ -238,7 +234,7 @@ $offset = ($page - 1) * $limit;
                     (<?= number_format($raw_total_tx) ?> total transactions)</span>
 
                 <?php if ($page > 1): ?>
-                    <a href="?page=<?= $page - 1 ?>" class="pagination-btn"
+                    <a href="?<?= http_build_query(array_merge($query_params, ['page' => $page - 1])) ?>" class="pagination-btn"
                         style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">«</a>
                 <?php else: ?>
                     <button class="pagination-btn" disabled>«</button>
@@ -249,7 +245,7 @@ $offset = ($page - 1) * $limit;
                 $end_page = min($total_pages, $page + 2);
 
                 if ($start_page > 1) {
-                    echo '<a href="?page=1" class="pagination-btn" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">1</a>';
+                    echo '<a href="?' . http_build_query(array_merge($query_params, ['page' => 1])) . '" class="pagination-btn" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">1</a>';
                     if ($start_page > 2) {
                         echo '<span style="color: var(--gray-400); margin: 0 4px;">...</span>';
                     }
@@ -259,7 +255,7 @@ $offset = ($page - 1) * $limit;
                     if ($i == $page) {
                         echo '<button class="pagination-btn active">' . $i . '</button>';
                     } else {
-                        echo '<a href="?page=' . $i . '" class="pagination-btn" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">' . $i . '</a>';
+                        echo '<a href="?' . http_build_query(array_merge($query_params, ['page' => $i])) . '" class="pagination-btn" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">' . $i . '</a>';
                     }
                 }
 
@@ -267,12 +263,12 @@ $offset = ($page - 1) * $limit;
                     if ($end_page < $total_pages - 1) {
                         echo '<span style="color: var(--gray-400); margin: 0 4px;">...</span>';
                     }
-                    echo '<a href="?page=' . $total_pages . '" class="pagination-btn" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">' . $total_pages . '</a>';
+                    echo '<a href="?' . http_build_query(array_merge($query_params, ['page' => $total_pages])) . '" class="pagination-btn" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">' . $total_pages . '</a>';
                 }
                 ?>
 
                 <?php if ($page < $total_pages): ?>
-                    <a href="?page=<?= $page + 1 ?>" class="pagination-btn"
+                    <a href="?<?= http_build_query(array_merge($query_params, ['page' => $page + 1])) ?>" class="pagination-btn"
                         style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">»</a>
                 <?php else: ?>
                     <button class="pagination-btn" disabled>»</button>
