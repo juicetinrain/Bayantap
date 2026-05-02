@@ -3,7 +3,7 @@ session_start();
 header('Content-Type: application/json');
 require_once 'db_connect.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'superuser') {
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
     exit;
 }

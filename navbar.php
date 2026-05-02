@@ -1,6 +1,6 @@
 <?php
 $current_page = basename($_SERVER['PHP_SELF']);
-$is_superuser = isset($_SESSION['role']) && $_SESSION['role'] === 'superuser';
+$is_superuser = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 ?>
 <!-- ══════════════════════════════════════════
     NAVIGATION BAR
@@ -46,58 +46,6 @@ $is_superuser = isset($_SESSION['role']) && $_SESSION['role'] === 'superuser';
 
     <!-- Right side -->
     <div class="nav-right">
-
-      <!-- Notification bell -->
-      <div style="position:relative;">
-        <button class="nav-icon-btn" data-tip="Notifications" onclick="toggleNotif()" id="notifBtn"
-          aria-label="Notifications">
-          🔔
-          <span class="notif-dot" id="notifDot"></span>
-        </button>
-        <div class="notif-dropdown" id="notifDropdown">
-          <div class="notif-header">
-            <span>Notifications</span>
-            <button onclick="markAllRead()">Mark all read</button>
-          </div>
-          <div class="notif-item unread">
-            <div class="notif-icon ni-amber">⚠️</div>
-            <div class="notif-text">
-              <div class="nt-title">15 overdue accounts</div>
-              <div class="nt-body">January 2026 billing — requires follow-up action</div>
-              <div class="nt-time">2 hours ago</div>
-            </div>
-            <div class="unread-pip"></div>
-          </div>
-          <div class="notif-item unread">
-            <div class="notif-icon ni-green">✅</div>
-            <div class="notif-text">
-              <div class="nt-title">Payment received</div>
-              <div class="nt-body">Janella Ashley Gomez — Blk 15 Lot 2 paid ₱960.00</div>
-              <div class="nt-time">4 hours ago</div>
-            </div>
-            <div class="unread-pip"></div>
-          </div>
-          <div class="notif-item unread">
-            <div class="notif-icon ni-blue">📋</div>
-            <div class="notif-text">
-              <div class="nt-title">New resident added</div>
-              <div class="nt-body">Blk 4 Lot 1 — Aliyah Macapagal registered</div>
-              <div class="nt-time">Yesterday</div>
-            </div>
-            <div class="unread-pip"></div>
-          </div>
-          <div class="notif-item">
-            <div class="notif-icon ni-blue">📊</div>
-            <div class="notif-text">
-              <div class="nt-title">Monthly report ready</div>
-              <div class="nt-body">December 2025 billing summary is available</div>
-              <div class="nt-time">2 days ago</div>
-            </div>
-          </div>
-          <div class="notif-footer" onclick="toggleNotif()">View all notifications →</div>
-        </div>
-      </div>
-
       <!-- Divider -->
       <div style="width:1px;height:28px;background:var(--gray-200);margin:0 4px;flex-shrink:0;"></div>
 
@@ -174,26 +122,6 @@ $is_superuser = isset($_SESSION['role']) && $_SESSION['role'] === 'superuser';
 </nav>
 
 <script>
-  /* ── Notification dropdown ── */
-  function toggleNotif() {
-    const dd = document.getElementById('notifDropdown');
-    const isOpen = dd.classList.contains('is-open');
-    closeAllDropdowns();
-    if (!isOpen) {
-      dd.classList.add('is-open');
-      const btn = document.getElementById('notifBtn');
-      if(btn) btn.style.background = 'var(--gray-100)';
-    }
-  }
-
-  function markAllRead() {
-    document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
-    document.querySelectorAll('.unread-pip').forEach(el => el.remove());
-    const dot = document.getElementById('notifDot');
-    if(dot) dot.style.display = 'none';
-    closeAllDropdowns();
-  }
-
   /* ── User menu dropdown ── */
   function toggleUserMenu() {
     const dd = document.getElementById('userDropdown');
@@ -216,12 +144,10 @@ $is_superuser = isset($_SESSION['role']) && $_SESSION['role'] === 'superuser';
     const nd = document.getElementById('notifDropdown');
     const ud = document.getElementById('userDropdown');
     const ub = document.getElementById('userMenuBtn');
-    const nb = document.getElementById('notifBtn');
     
     if(nd) nd.classList.remove('is-open');
     if(ud) ud.classList.remove('is-open');
     if(ub) ub.classList.remove('open');
-    if(nb) nb.style.background = '';
   }
 
   /* Close dropdowns on outside click */

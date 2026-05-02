@@ -68,67 +68,8 @@ $system_rate = get_setting('current_rate', '33.70');
     href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="dashboard.css?v=5">
+  <link rel="stylesheet" href="CSS/billings.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <style>
-    .qr-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-top: 15px;
-      padding: 10px;
-      border: 1px dashed var(--gray-200);
-      border-radius: 8px;
-    }
-
-    .qr-label {
-      font-size: 0.7rem;
-      color: var(--gray-500);
-      margin-top: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    #rc-qr img,
-    #vr-qr img {
-      margin: 0 auto;
-    }
-
-    /* Image Preview Styles */
-    .img-preview-box {
-        width: 100%;
-        height: 120px;
-        background: var(--gray-50);
-        border: 1.5px dashed var(--gray-200);
-        border-radius: 8px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        position: relative;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    .img-preview-box:hover { border-color: var(--blue); background: white; }
-    .img-preview-box img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-    .img-preview-label {
-        font-size: 0.7rem;
-        font-weight: 700;
-        color: var(--gray-400);
-        text-transform: uppercase;
-        margin-top: 4px;
-    }
-
-    @media print {
-      .qr-container {
-        border: none;
-      }
-    }
-  </style>
 </head>
 
 <body>
@@ -544,7 +485,7 @@ $system_rate = get_setting('current_rate', '33.70');
           </div>
           <div class="form-group">
             <label>Rate (₱)</label>
-            <input type="number" id="edit-rate" placeholder="e.g. <?= htmlspecialchars($system_rate) ?>" min="0" step="0.01" value="<?= htmlspecialchars($system_rate) ?>">
+            <input type="number" id="edit-rate" placeholder="e.g. <?= htmlspecialchars($system_rate) ?>" min="0" step="0.01" value="<?= htmlspecialchars($system_rate) ?>" readonly style="background: var(--gray-50); cursor: not-allowed; color: var(--gray-500); border-color: var(--gray-200);">
           </div>
           <div class="form-group">
             <label>Amount Due (₱)</label>
