@@ -8,7 +8,6 @@ require_once 'db_connect.php';
 
 $search_q = $_GET['q'] ?? '';
 $search_date = $_GET['date'] ?? '';
-$search_type = $_GET['type'] ?? '';
 $search_status = $_GET['status'] ?? '';
 
 // Build WHERE clauses safely
@@ -26,11 +25,6 @@ if ($search_q !== '') {
 if ($search_date !== '') {
     $where_clauses[] = "DATE(t.payment_date) = ?";
     $params[] = $search_date;
-}
-
-if ($search_type !== '') {
-    // Current database doesn't have a specific type, so we just dummy filter if 'payment' is selected
-    // or expand this if you have a `type` column in `transactions`
 }
 
 if ($search_status !== '') {
@@ -154,12 +148,7 @@ unset($query_params['page']);
                     placeholder="Search by ID, name, or receipt…" onchange="this.form.submit()">
             </div>
             <div class="filter-group">
-                <div class="filter-wrap">
-                    <select name="type" class="filter-select" onchange="this.form.submit()">
-                        <option value="" <?= $search_type === '' ? 'selected' : '' ?>>All Types</option>
-                        <option value="payment" <?= $search_type === 'payment' ? 'selected' : '' ?>>Payment</option>
-                    </select>
-                </div>
+                <button type="button" class="add-transaction-btn" onclick="openAddTransactionModal()">Add Transaction</button>
                 <div class="filter-wrap">
                     <input type="date" name="date" class="filter-select" value="<?= htmlspecialchars($search_date) ?>" onchange="this.form.submit()">
                 </div>
@@ -188,7 +177,6 @@ unset($query_params['page']);
                         <tr>
                             <th>Date</th>
                             <th>Reference</th>
-                            <th>Type</th>
                             <th>Description</th>
                             <th>Amount</th>
                             <th>Status</th>
@@ -212,7 +200,6 @@ unset($query_params['page']);
                                     <div class="tx-date-sub"><?= htmlspecialchars($timeText) ?></div>
                                 </td>
                                 <td><span class="tx-ref"><?= htmlspecialchars($tx['receipt_no']) ?></span></td>
-                                <td><span class="tx-type payment">💳 Payment</span></td>
                                 <td>
                                     <div class="tx-description"><?= htmlspecialchars($tx['full_name']) ?></div>
                                     <div class="tx-description-sub">
@@ -319,8 +306,118 @@ unset($query_params['page']);
             if (el) el.textContent = pageLabels[page] || 'Dashboard';
         }
 
+        /* Add Transaction Modal */
+        function openAddTransactionModal() {
+            document.getElementById('addTransactionModal').style.display = 'block';
+        }
+
+        function closeAddTransactionModal() {
+            document.getElementById('addTransactionModal').style.display = 'none';
+            document.getElementById('addTransactionForm').reset();
+        }
+
+        function fetchBillingDetails() {
+            const receipt_no = document.getElementById('receipt_no').value.trim();
+            if (!receipt_no) return;
+            fetch('api_get_billing_details.php?receipt_no=' + encodeURIComponent(receipt_no))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        // Clear fields
+                        document.getElementById('resident_name').value = '';
+                        document.getElementById('address').value = '';
+                        document.getElementById('usage').value = '';
+                        document.getElementById('rate').value = '';
+                        document.getElementById('amount_due').value = '';
+                        document.getElementById('change').value = '';
+                        return;
+                    }
+                    document.getElementById('resident_name').value = data.resident_name;
+                    document.getElementById('address').value = data.address;
+                    document.getElementById('usage').value = data.usage;
+                    document.getElementById('rate').value = data.rate;
+                    document.getElementById('amount_due').value = data.amount_due;
+                    calculateChange();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while fetching details.');
+                });
+        }
+
+        function calculateChange() {
+            const payment = parseFloat(document.getElementById('payment_amount').value) || 0;
+            const due = parseFloat(document.getElementById('amount_due').value) || 0;
+            const change = payment - due;
+            document.getElementById('change').value = change.toFixed(2);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('addTransactionForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                fetch('api_add_transaction.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Transaction added successfully');
+                        closeAddTransactionModal();
+                        location.reload();
+                    } else {
+                        alert(data.error || 'An error occurred');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while adding the transaction.');
+                });
+            });
+        });
 
     </script>
+
+    <!-- Add Transaction Modal -->
+    <div id="addTransactionModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddTransactionModal()">&times;</span>
+            <h2>Add New Transaction</h2>
+            <form id="addTransactionForm" enctype="multipart/form-data">
+                <label for="receipt_no">Receipt Number:</label>
+                <input type="text" id="receipt_no" name="receipt_no" required onchange="fetchBillingDetails()">
+
+                <label for="resident_name">Resident Name:</label>
+                <input type="text" id="resident_name" readonly>
+
+                <label for="address">Address:</label>
+                <input type="text" id="address" readonly>
+
+                <label for="usage">Usage (m³):</label>
+                <input type="text" id="usage" readonly>
+
+                <label for="rate">Rate (₱/m³):</label>
+                <input type="text" id="rate" readonly>
+
+                <label for="amount_due">Amount Due:</label>
+                <input type="text" id="amount_due" readonly>
+
+                <label for="payment_amount">Payment Amount:</label>
+                <input type="number" id="payment_amount" name="payment_amount" step="0.01" required onchange="calculateChange()">
+
+                <label for="change">Change:</label>
+                <input type="text" id="change" readonly>
+
+                <label for="receipt_image">Receipt Image:</label>
+                <input type="file" id="receipt_image" name="receipt_image" accept="image/*">
+
+                <button type="submit">Confirm</button>
+            </form>
+        </div>
+    </div>
+
 </body>
 
 </html>

@@ -186,7 +186,7 @@ foreach($trend_data_raw as $row) {
     </div>
   </div>
 
-  <div class="main">
+  <div class="main"> 
     
     <div class="controls-wrapper">
         <form method="GET" class="filter-form" style="display: flex; gap: 16px; align-items: center;">
