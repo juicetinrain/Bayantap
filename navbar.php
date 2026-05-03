@@ -135,8 +135,8 @@ $is_superuser = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
       </div>
       <div class="modal-body" style="padding: 24px;">
         <div class="form-group">
-          <label>Username</label>
-          <input type="text" id="prof-username" value="<?= htmlspecialchars($_SESSION['username'] ?? '') ?>" autocomplete="username">
+          <label>Full Name</label>
+          <input type="text" id="prof-display-name" value="<?= htmlspecialchars($_SESSION['display_name'] ?? '') ?>" autocomplete="name">
         </div>
         
         <hr style="border: none; border-top: 1px dashed var(--gray-200); margin: 20px 0;">
