@@ -126,5 +126,6 @@ try {
     echo json_encode(['success' => true, 'message' => 'Receipt successfully sent to ' . $email]);
 
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'error' => 'Email failed: ' . $mail->ErrorInfo]);
+    $error = isset($mail) ? $mail->ErrorInfo : $e->getMessage();
+    echo json_encode(['success' => false, 'error' => 'Email failed: ' . $error]);
 }

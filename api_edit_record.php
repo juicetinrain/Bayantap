@@ -40,32 +40,18 @@ try {
         $data['resident_id']
     ]);
 
-    // Update billing details
-    $paid_date = null;
-    $receipt_no = null;
-    if ($data['status'] === 'paid') {
-        $paid_date = date('Y-m-d H:i:s');
-        $receipt_no = 'MV-' . date('Y') . '-' . str_pad($data['billing_id'], 4, '0', STR_PAD_LEFT);
-        
-        $txStmt = $pdo->prepare("INSERT IGNORE INTO transactions (receipt_no, resident_id, amount_paid, treasurer_id) VALUES (?, ?, ?, ?)");
-        $txStmt->execute([
-            $receipt_no,
-            $data['resident_id'],
-            $data['amount_due'],
-            $_SESSION['user_id']
-        ]);
-    }
+    // Always generate a receipt_no so it can be looked up from the transactions page
+    $receipt_no_gen = 'MV-' . date('Y') . '-' . str_pad($data['billing_id'], 4, '0', STR_PAD_LEFT);
 
-    // Build update query for images
-    $sql = "UPDATE billings SET previous_reading = ?, current_reading = ?, usage_m3 = ?, amount_due = ?, status = ?, paid_date = ?, receipt_no = ?";
+    // Build update query — status is NO LONGER editable from billings page
+    // We preserve the existing status; only the transactions page can set it to 'paid'
+    $sql = "UPDATE billings SET previous_reading = ?, current_reading = ?, usage_m3 = ?, amount_due = ?, receipt_no = COALESCE(receipt_no, ?)";
     $params = [
         (float)($data['previous_reading'] ?? 0),
         (float)($data['current_reading'] ?? 0),
         (float)($data['usage_m3'] ?? 0),
         (float)($data['amount_due'] ?? 0),
-        $data['status'] ?? 'unpaid',
-        $paid_date,
-        $receipt_no
+        $receipt_no_gen
     ];
 
     if ($current_img_name) {
@@ -79,9 +65,10 @@ try {
     $stmt2 = $pdo->prepare($sql);
     $stmt2->execute($params);
 
-    // AUTO-GENERATE NEXT MONTH IF PAID OR STARTED
-    if ($data['status'] === 'paid' || $data['status'] === 'started') {
-        $mStmt = $pdo->prepare("SELECT billing_month, current_reading_image FROM billings WHERE id = ?");
+    // AUTO-GENERATE NEXT MONTH billing record if readings were entered
+    $usage = (float)($data['usage_m3'] ?? 0);
+    if ($usage > 0) {
+        $mStmt = $pdo->prepare("SELECT billing_month, current_reading_image, status FROM billings WHERE id = ?");
         $mStmt->execute([$data['billing_id']]);
         $row = $mStmt->fetch(PDO::FETCH_ASSOC);
         $current_month_str = $row['billing_month'] ?? null;
@@ -108,6 +95,9 @@ try {
                         'pending',
                         $final_current_img // Carry over current image to next month's previous
                     ]);
+                    $next_bill_id = $pdo->lastInsertId();
+                    $next_receipt_no = 'MV-' . date('Y', strtotime($next_month_str)) . '-' . str_pad($next_bill_id, 4, '0', STR_PAD_LEFT);
+                    $pdo->query("UPDATE billings SET receipt_no = '$next_receipt_no' WHERE id = $next_bill_id");
                 } else {
                     // Update existing next month's previous reading and image
                     $updNext = $pdo->prepare("UPDATE billings SET previous_reading = ?, previous_reading_image = ? WHERE resident_id = ? AND billing_month = ? AND (status = 'pending' OR status = 'unpaid')");

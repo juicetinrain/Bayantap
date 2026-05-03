@@ -12,13 +12,14 @@ if (empty($user) || empty($pass)) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT id, username, password_hash, role FROM users WHERE username = :username");
+$stmt = $pdo->prepare("SELECT id, username, password_hash, role, display_name FROM users WHERE username = :username");
 $stmt->execute(['username' => $user]);
 $account = $stmt->fetch();
 
 if ($account && password_verify($pass, $account['password_hash'])) {
     $_SESSION['user_id'] = $account['id'];
     $_SESSION['username'] = $account['username'];
+    $_SESSION['display_name'] = $account['display_name'] ?? $account['username'];
     $_SESSION['role'] = $account['role'];
     echo json_encode(['success' => true]);
 } else {

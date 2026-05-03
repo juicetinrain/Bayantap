@@ -1271,6 +1271,11 @@
     color: #0369a1;
   }
 
+  .chip-partial {
+    background: #e0e7ff;
+    color: #4f46e5;
+  }
+
   /* Blue/Teal for Managed Start */
 
   .action-btn {
@@ -1745,6 +1750,10 @@
 
   /* ── Print ── */
   @media print {
+    @page {
+      margin: 0;
+      size: 48mm 210mm;
+    }
 
     /* Kill all standard UI elements */
     nav,
@@ -1793,8 +1802,8 @@
       box-shadow: none !important;
       border: none !important;
       border-radius: 0 !important;
-      width: 80mm !important;
-      /* Standard receipt width */
+      width: 48mm !important;
+      /* POS receipt width */
       max-width: 100% !important;
       margin: 0 auto !important;
       background: #fff !important;
@@ -1808,72 +1817,136 @@
       padding: 2mm !important;
       margin: 0 !important;
       visibility: visible !important;
+      font-size: 0.65rem !important; /* Scaled down for 48mm */
     }
 
     /* Logo/Title refinement */
     .modal-receipt-logo {
       margin-top: 0 !important;
-      margin-bottom: 10mm !important;
+      margin-bottom: 5mm !important;
       text-align: center;
     }
 
     .r-title {
-      font-size: 1.4rem !important;
+      font-size: 1.1rem !important;
       font-weight: 800 !important;
+    }
+
+    .r-sub, .r-off {
+      font-size: 0.6rem !important;
     }
 
     /* Rows refinement */
     .receipt-row {
-      margin-bottom: 3mm !important;
+      margin-bottom: 2mm !important;
       border-bottom: none !important;
+      font-size: 0.65rem !important;
+      display: flex !important;
+      justify-content: space-between !important;
+    }
+    
+    .receipt-row .key {
+       font-size: 0.6rem !important;
     }
 
     /* Chargers box - make it look like a physical slip */
     .consumption-box {
-      border: 1.5px dashed #333 !important;
+      border: 1px dashed #333 !important;
       background: #fff !important;
       border-radius: 4px;
-      padding: 4mm !important;
-      margin: 8mm 0 !important;
+      padding: 2mm !important;
+      margin: 4mm 0 !important;
     }
+
+    .c-title { font-size: 0.7rem !important; }
+    .c-row { font-size: 0.65rem !important; }
 
     /* Total row emboldened */
     .total-row {
-      margin-top: 5mm !important;
-      padding-top: 4mm !important;
-      border-top: 2px solid #000 !important;
+      margin-top: 3mm !important;
+      padding-top: 2mm !important;
+      border-top: 1.5px solid #000 !important;
+      font-size: 0.75rem !important;
     }
 
     .qr-container {
-      margin-top: 8mm !important;
+      margin-top: 4mm !important;
+    }
+
+    .qr-label {
+      font-size: 0.5rem !important;
     }
 
     /* Signatures - make them clear for paper */
     .sig-row {
       display: flex !important;
       justify-content: space-between !important;
-      margin: 8mm 0 !important;
+      margin: 4mm 0 !important;
     }
 
     .sig-box {
       border-top: 1px solid #000 !important;
-      width: 45% !important;
+      width: 48% !important;
       text-align: center;
-      padding-top: 2mm;
+      padding-top: 1mm;
     }
 
     .sig-label {
-      font-size: .8rem !important;
-      color: #666 !important;
-      margin-bottom: 1mm;
+      font-size: 0.55rem !important;
+      color: #333 !important;
+      margin-bottom: 0.5mm;
       display: block !important;
     }
 
     .sig-name {
-      font-size: .9rem !important;
+      font-size: 0.65rem !important;
       font-weight: 700 !important;
       color: #000 !important;
       display: block !important;
+    }
+    
+    .receipt-footer {
+      font-size: 0.55rem !important;
+    }
+    .receipt-divider {
+      margin: 3mm 0 !important;
+    }
+
+    /* QR code sizing for 48mm paper */
+    #vr-qr img,
+    #vr-qr canvas,
+    #rc-qr img,
+    #rc-qr canvas {
+      max-width: 80px !important;
+      max-height: 80px !important;
+      width: 80px !important;
+      height: 80px !important;
+    }
+
+    /* Prevent long text overflow on narrow receipt */
+    .receipt-row .val {
+      word-break: break-all !important;
+      overflow-wrap: break-word !important;
+      max-width: 55% !important;
+      text-align: right !important;
+    }
+
+    /* Overall overflow guard */
+    .modal-body {
+      overflow: hidden !important;
+    }
+
+    /* Paid badge compact */
+    .paid-badge {
+      font-size: 0.65rem !important;
+      padding: 2mm !important;
+      margin: 2mm 0 !important;
+      border-radius: 4px !important;
+    }
+
+    /* Status badge */
+    #vr-status-badge, #rc-status-badge {
+      font-size: 0.65rem !important;
     }
   }
 

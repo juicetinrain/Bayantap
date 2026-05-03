@@ -246,3 +246,27 @@
     @media (max-width: 900px) {
         .dashboard-grid { grid-template-columns: 1fr; }
     }
+
+    /* ── PRINT STYLES ── */
+    @media print {
+        /* Hide non-report elements */
+        nav, 
+        .controls-wrapper, 
+        .breadcrumb-bar,
+        .modal-backdrop {
+            display: none !important;
+        }
+
+        /* Ensure main content is visible */
+        .main, .page-header {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        /* Prevent charts from being cut off */
+        canvas {
+            max-width: 100% !important;
+            height: auto !important;
+        }
+    }

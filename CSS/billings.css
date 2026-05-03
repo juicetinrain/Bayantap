@@ -1,4 +1,4 @@
-    .qr-container {
+.qr-container {
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -23,36 +23,90 @@
 
     /* Image Preview Styles */
     .img-preview-box {
-        width: 100%;
-        height: 120px;
-        background: var(--gray-50);
-        border: 1.5px dashed var(--gray-200);
-        border-radius: 8px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        position: relative;
-        cursor: pointer;
-        transition: all 0.2s;
+      width: 100%;
+      height: 120px;
+      background: var(--gray-50);
+      border: 1.5px dashed var(--gray-200);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s;
     }
-    .img-preview-box:hover { border-color: var(--blue); background: white; }
+
+    .img-preview-box:hover {
+      border-color: var(--blue);
+      background: white;
+    }
+
     .img-preview-box img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
+
     .img-preview-label {
-        font-size: 0.7rem;
-        font-weight: 700;
-        color: var(--gray-400);
-        text-transform: uppercase;
-        margin-top: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      margin-top: 4px;
     }
 
     @media print {
-      .qr-container {
-        border: none;
+      @page {
+        size: A5 portrait;
+        margin: 10mm;
+      }
+
+      html,
+      body {
+        width: auto !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+      }
+
+      body.print-receipt .receipt-card {
+        display: block !important;
+        width: 100% !important;
+        max-width: 148mm !important;
+        margin: 0 auto !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        border: none !important;
+        padding: 0 !important;
+      }
+
+      body.print-receipt .receipt-card .receipt-body {
+        padding: 8mm !important;
+      }
+
+      body.print-receipt .receipt-card *,
+      body.print-receipt .receipt-card *::before,
+      body.print-receipt .receipt-card *::after {
+        color: #000 !important;
+      }
+
+      body.print-receipt .qr-container {
+        border: none !important;
+      }
+
+      /* Hide non-print UI elements when printing directly from this page */
+      body.print-receipt nav,
+      body.print-receipt .page-header,
+      body.print-receipt .toolbar,
+      body.print-receipt .stats-grid,
+      body.print-receipt .content-grid .table-card,
+      body.print-receipt .action-menu,
+      body.print-receipt .action-btn,
+      body.print-receipt .table-wrap,
+      body.print-receipt .receipt-card .btn-print {
+        display: none !important;
       }
     }

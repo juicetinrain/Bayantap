@@ -50,6 +50,9 @@ try {
         0, // initially 0 amount due
         ($data['initial_meter'] ?? 0) > 0 ? 'pending' : 'started'
     ]);
+    $init_bill_id = $pdo->lastInsertId();
+    $init_receipt_no = 'MV-' . date('Y') . '-' . str_pad($init_bill_id, 4, '0', STR_PAD_LEFT);
+    $pdo->query("UPDATE billings SET receipt_no = '$init_receipt_no' WHERE id = $init_bill_id");
 
     // AUTO-GENERATE NEXT MONTH FOR NEW RECORDS
     if (true) { // Always generate next month for new resident starting out 
@@ -71,6 +74,9 @@ try {
                 0,
                 'pending'
             ]);
+            $next_bill_id = $pdo->lastInsertId();
+            $next_receipt_no = 'MV-' . date('Y', strtotime($next_month_str)) . '-' . str_pad($next_bill_id, 4, '0', STR_PAD_LEFT);
+            $pdo->query("UPDATE billings SET receipt_no = '$next_receipt_no' WHERE id = $next_bill_id");
         }
     }
 

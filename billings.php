@@ -234,6 +234,9 @@ $system_rate = get_setting('current_rate', '33.70');
                   // If it's a past month and not paid, it's OVERDUE
                   $status_chip = '<span class="status-chip chip-unpaid">OVERDUE</span>';
                   $date_text = "Overdue (" . $row['billing_month'] . ")";
+                } elseif ($row['status'] === 'partial') {
+                  $status_chip = '<span class="status-chip chip-partial" style="background:#e0e7ff;color:#4f46e5;">PARTIAL</span>';
+                  $date_text = "Partially Paid";
                 } elseif ($row['status'] === 'pending') {
                   $status_chip = '<span class="status-chip" style="background:var(--amber-bg);color:var(--amber);">PENDING</span>';
                   $date_text = "Pending";
@@ -248,6 +251,7 @@ $system_rate = get_setting('current_rate', '33.70');
                   data-email="<?= htmlspecialchars($row['email'] ?? '') ?>"
                   data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>"
                   data-id="<?= htmlspecialchars($row['id']) ?>"
+                  data-receipt-no="<?= htmlspecialchars($row['receipt_no'] ?? '') ?>"
                   data-hh-id="<?= htmlspecialchars($row['household_id'] ?? 'N/A') ?>"
                   data-remarks="<?= htmlspecialchars($row['remarks'] ?? '') ?>"
                   data-prev-img="<?= htmlspecialchars($row['previous_reading_image'] ?? '') ?>"
@@ -255,7 +259,8 @@ $system_rate = get_setting('current_rate', '33.70');
                   data-resident-id="<?= htmlspecialchars($row['resident_id']) ?>">
                   <td>
                     <div class="hh-cell">
-                      <div class="hh-id-pill" style="background:var(--blue-light); color:var(--blue); font-weight:700; font-size:0.75rem; padding:4px 10px; border-radius:20px; border:1px solid rgba(37,99,235,0.1);">
+                      <div class="hh-id-pill"
+                        style="background:var(--blue-light); color:var(--blue); font-weight:700; font-size:0.75rem; padding:4px 10px; border-radius:20px; border:1px solid rgba(37,99,235,0.1);">
                         <?= htmlspecialchars($row['household_id'] ?? 'N/A') ?>
                       </div>
                       <span class="hh-id" style="font-size:0.75rem; color:var(--gray-400); margin-top:2px;">
@@ -325,7 +330,8 @@ $system_rate = get_setting('current_rate', '33.70');
             <div class="receipt-row"><span class="key">Household No:</span><span class="val" id="rc-hh">---</span></div>
             <div class="receipt-row"><span class="key">Name:</span><span class="val bold" id="rc-name">---</span></div>
             <div class="receipt-row"><span class="key">Email:</span><span class="val" id="rc-email">---</span></div>
-            <div class="receipt-row"><span class="key">Contact No:</span><span class="val" id="rc-contact">---</span></div>
+            <div class="receipt-row"><span class="key">Contact No:</span><span class="val" id="rc-contact">---</span>
+            </div>
           </div>
           <div class="consumption-box">
             <div class="c-title">Charges Summary</div>
@@ -434,7 +440,9 @@ $system_rate = get_setting('current_rate', '33.70');
       </div>
       <div class="modal-footer">
         <button class="modal-btn modal-btn-cancel" onclick="closeModal('modalViewReceipt')">Close</button>
-        <button class="modal-btn modal-btn-primary" onclick="sendEmailReceipt()" id="emailReceiptBtn" style="background:var(--blue-light); color:var(--blue); border:1px solid var(--blue-200);">📧 Send Email</button>
+        <button class="modal-btn modal-btn-primary" onclick="sendEmailReceipt()" id="emailReceiptBtn"
+          style="background:var(--blue-light); color:var(--blue); border:1px solid var(--blue-200);">📧 Send
+          Email</button>
         <button class="modal-btn modal-btn-primary" onclick="window.print()">🖨️ Print</button>
       </div>
     </div>
@@ -462,40 +470,38 @@ $system_rate = get_setting('current_rate', '33.70');
               style="background:var(--gray-50);color:var(--gray-500);">
           </div>
           <div class="form-group">
-            <label>Status</label>
-            <select id="edit-status">
-              <optgroup label="Current Status">
-                <option value="paid">Paid</option>
-                <option value="pending">Pending</option>
-              </optgroup>
-              <optgroup label="Past Status">
-                <option value="unpaid">Overdue</option>
-              </optgroup>
-            </select>
+            <label>Current Status</label>
+            <div id="edit-status-display" style="padding:10px 14px; border-radius:8px; font-size:0.85rem; font-weight:700; text-align:center; text-transform:uppercase; letter-spacing:0.04em;">—</div>
           </div>
         </div>
         <div class="form-group">
           <label>Resident Name</label>
-          <input type="text" id="edit-name" placeholder="Full name">
+          <input type="text" id="edit-name" placeholder="Full name" readonly
+            style="background: var(--gray-50); cursor: not-allowed; color: var(--gray-500); border-color: var(--gray-200);">
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Usage (m³)</label>
-            <input type="number" id="edit-usage" placeholder="Auto-calculated" min="0" readonly style="background: var(--gray-50); cursor: not-allowed; color: var(--gray-500); border-color: var(--gray-200);">
+            <input type="number" id="edit-usage" placeholder="Auto-calculated" min="0" readonly
+              style="background: var(--gray-50); cursor: not-allowed; color: var(--gray-500); border-color: var(--gray-200);">
           </div>
           <div class="form-group">
             <label>Rate (₱)</label>
-            <input type="number" id="edit-rate" placeholder="e.g. <?= htmlspecialchars($system_rate) ?>" min="0" step="0.01" value="<?= htmlspecialchars($system_rate) ?>" readonly style="background: var(--gray-50); cursor: not-allowed; color: var(--gray-500); border-color: var(--gray-200);">
+            <input type="number" id="edit-rate" placeholder="e.g. <?= htmlspecialchars($system_rate) ?>" min="0"
+              step="0.01" value="<?= htmlspecialchars($system_rate) ?>" readonly
+              style="background:var(--gray-50);color:var(--gray-500); border-color: var(--gray-200);">
           </div>
           <div class="form-group">
             <label>Amount Due (₱)</label>
-            <input type="number" id="edit-amount" placeholder="e.g. 575.00" min="0" step="0.01" readonly style ="background: var(--gray-50); cursor: not-allowed; color: var(--gray-500); border-color: var(--gray-200);">
+            <input type="number" id="edit-amount" placeholder="e.g. 575.00" min="0" step="0.01" readonly
+              style="background:var(--gray-50);color:var(--gray-700);font-weight:700;">
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Previous Reading</label>
-            <input type="number" id="edit-prev" placeholder="e.g. 1245" min="0" readonly style ="background: var(--gray-50); cursor: not-allowed; color: var(--gray-500); border-color: var(--gray-200);">
+          <input type="number" id="edit-prev" placeholder="e.g. 1245" min="0" readonly
+            style="background: var(--gray-50); cursor: not-allowed; color: var(--gray-500); border-color: var(--gray-200);">
           </div>
           <div class="form-group">
             <label>Current Reading</label>
@@ -508,17 +514,19 @@ $system_rate = get_setting('current_rate', '33.70');
           <div class="form-group">
             <label>Previous Photo (Evidence)</label>
             <div class="img-preview-box" id="prev-img-preview" onclick="openFullImage(this)">
-                <span class="img-preview-label">No previous photo</span>
+              <span class="img-preview-label">No previous photo</span>
             </div>
             <input type="hidden" id="edit-prev-img-path">
           </div>
           <div class="form-group">
             <label>Current Photo (Attach)</label>
-            <div class="img-preview-box" id="curr-img-preview" onclick="document.getElementById('edit-curr-img-input').click()">
-                <span style="font-size: 1.2rem; margin-bottom: 2px;">📸</span>
-                <span class="img-preview-label">Click to Upload</span>
+            <div class="img-preview-box" id="curr-img-preview"
+              onclick="document.getElementById('edit-curr-img-input').click()">
+              <span style="font-size: 1.2rem; margin-bottom: 2px;">📸</span>
+              <span class="img-preview-label">Click to Upload</span>
             </div>
-            <input type="file" id="edit-curr-img-input" style="display:none;" accept="image/*" onchange="handleImagePreview(this, 'curr-img-preview')">
+            <input type="file" id="edit-curr-img-input" style="display:none;" accept="image/*"
+              onchange="handleImagePreview(this, 'curr-img-preview')">
           </div>
         </div>
       </div>
@@ -550,7 +558,6 @@ $system_rate = get_setting('current_rate', '33.70');
         </div>
         <div class="confirm-detail">
           <div class="cd-row"><span>Household</span><span id="ec-hh">—</span></div>
-          <div class="cd-row"><span>Status → New</span><span id="ec-status">—</span></div>
           <div class="cd-row"><span>Usage</span><span id="ec-usage">—</span></div>
           <div class="cd-row"><span>Amount</span><span id="ec-amount">—</span></div>
           <div class="cd-row"><span>Reading</span><span id="ec-range">—</span></div>
@@ -611,11 +618,14 @@ $system_rate = get_setting('current_rate', '33.70');
       </div>
       <div class="modal-body">
         <input type="hidden" id="remark-billing-id">
-        <div style="background: var(--gray-50); padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.85rem;">
+        <div
+          style="background: var(--gray-50); padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.85rem;">
           <div style="font-weight: 700; color: var(--gray-900);" id="remark-hh-info">—</div>
           <div style="color: var(--gray-500); margin-top: 2px;" id="remark-month-info">—</div>
         </div>
-        <textarea id="remark-input" style="width:100%; height:120px; padding:12px; border-radius:8px; border:1.5px solid var(--gray-200); font-family:inherit; font-size: 0.9rem;" placeholder="e.g. Promised to pay by next week, disconnected, etc..."></textarea>
+        <textarea id="remark-input"
+          style="width:100%; height:120px; padding:12px; border-radius:8px; border:1.5px solid var(--gray-200); font-family:inherit; font-size: 0.9rem;"
+          placeholder="e.g. Promised to pay by next week, disconnected, etc..."></textarea>
       </div>
       <div class="modal-footer">
         <button class="modal-btn modal-btn-cancel" onclick="closeModal('modalRemark')">Cancel</button>
@@ -729,6 +739,7 @@ $system_rate = get_setting('current_rate', '33.70');
       _activeRow = row;
       return {
         id: row.getAttribute('data-id') || '',
+        receipt_no: row.getAttribute('data-receipt-no') || 'N/A',
         resident_id: row.getAttribute('data-resident-id') || '',
         hh: row.querySelector('.hh-id-pill')?.textContent.trim() || '—',
         name: row.querySelector('.res-name')?.textContent.trim() || '—',
@@ -764,7 +775,7 @@ $system_rate = get_setting('current_rate', '33.70');
       // Total = Basic + Env Fee(20%) => Total = Basic * 1.20
       const basicCharge = rawAmount / 1.20;
       const envFee = rawAmount - basicCharge;
-      const rcNo = 'MV-2026-' + Math.floor(Math.random() * 9000 + 1000);
+      const rcNo = d.receipt_no && d.receipt_no !== 'N/A' ? d.receipt_no : 'Pending...';
       const isPaid = d.status.toLowerCase() === 'paid';
       const badgeText = isPaid ? '✓ Payment Received' : 'Pending/Unpaid';
       const badgeClass = isPaid ? 'paid-badge' : '';
@@ -810,8 +821,7 @@ $system_rate = get_setting('current_rate', '33.70');
       rcBadge.textContent = badgeClass ? badgeText : '';
 
       // QR Code Generation
-      const qrData = 'http://IP-ADDRESS-HERE/BayanTap-debug/portal.php?token=' + d.token;
-
+      const qrData = 'http://192.168.100.129/Bayantap/portal.php?token=' + d.token;
       // Clear previous QR
       document.getElementById('vr-qr').innerHTML = '';
       document.getElementById('rc-qr').innerHTML = '';
@@ -822,8 +832,8 @@ $system_rate = get_setting('current_rate', '33.70');
 
         new QRCode(document.getElementById('vr-qr'), {
           text: qrData,
-          width: 128,
-          height: 128,
+          width: 80,
+          height: 80,
           colorDark: "#0f172a",
           colorLight: "#ffffff",
           correctLevel: QRCode.CorrectLevel.H
@@ -831,8 +841,8 @@ $system_rate = get_setting('current_rate', '33.70');
 
         new QRCode(document.getElementById('rc-qr'), {
           text: qrData,
-          width: 100,
-          height: 100,
+          width: 80,
+          height: 80,
           colorDark: "#0f172a",
           colorLight: "#ffffff",
           correctLevel: QRCode.CorrectLevel.H
@@ -890,19 +900,19 @@ $system_rate = get_setting('current_rate', '33.70');
           email: d.email
         })
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          alert('Receipt successfully sent to ' + d.email);
-        } else {
-          alert('Failed to send email: ' + (data.error || 'Unknown error'));
-        }
-      })
-      .catch(() => alert('Network error. Failed to send email.'))
-      .finally(() => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-      });
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('Receipt successfully sent to ' + d.email);
+          } else {
+            alert('Failed to send email: ' + (data.error || 'Unknown error'));
+          }
+        })
+        .catch(() => alert('Network error. Failed to send email.'))
+        .finally(() => {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        });
     }
 
     /* ============================================================
@@ -921,47 +931,66 @@ $system_rate = get_setting('current_rate', '33.70');
       const rangeParts = d.range.split('→').map(s => s.trim());
       document.getElementById('edit-prev').value = rangeParts[0] || '';
       document.getElementById('edit-curr').value = rangeParts[1] || '';
-      const statusSel = document.getElementById('edit-status');
-      statusSel.value = d.status.toLowerCase().includes('paid') ? 'paid' : d.status.toLowerCase().includes('unpaid') ? 'unpaid' : 'pending';
-      
+
+      // Display status as read-only badge
+      const statusDisplay = document.getElementById('edit-status-display');
+      const st = d.status.toLowerCase();
+      if (st === 'paid') {
+        statusDisplay.textContent = 'PAID';
+        statusDisplay.style.background = 'var(--green-bg)';
+        statusDisplay.style.color = 'var(--green)';
+      } else if (st === 'partial') {
+        statusDisplay.textContent = 'PARTIAL';
+        statusDisplay.style.background = '#e0e7ff';
+        statusDisplay.style.color = '#4f46e5';
+      } else if (st === 'unpaid') {
+        statusDisplay.textContent = 'OVERDUE';
+        statusDisplay.style.background = 'var(--red-bg)';
+        statusDisplay.style.color = 'var(--red)';
+      } else {
+        statusDisplay.textContent = 'PENDING';
+        statusDisplay.style.background = 'var(--amber-bg)';
+        statusDisplay.style.color = 'var(--amber)';
+      }
+
       // Image Previews
       const prevBox = document.getElementById('prev-img-preview');
       const currBox = document.getElementById('curr-img-preview');
       document.getElementById('edit-prev-img-path').value = d.prev_img;
-      
+
       if (d.prev_img) {
-          prevBox.innerHTML = `<img src="uploads/meters/${d.prev_img}" alt="Previous">`;
+        prevBox.innerHTML = `<img src="uploads/meters/${d.prev_img}" alt="Previous">`;
       } else {
-          prevBox.innerHTML = `<span class="img-preview-label">No previous photo</span>`;
+        prevBox.innerHTML = `<span class="img-preview-label">No previous photo</span>`;
       }
 
       if (d.curr_img) {
-          currBox.innerHTML = `<img src="uploads/meters/${d.curr_img}" alt="Current">`;
+        currBox.innerHTML = `<img src="uploads/meters/${d.curr_img}" alt="Current">`;
       } else {
-          currBox.innerHTML = `<span style="font-size: 1.2rem; margin-bottom: 2px;">📸</span><span class="img-preview-label">Click to Upload</span>`;
+        currBox.innerHTML = `<span style="font-size: 1.2rem; margin-bottom: 2px;">📸</span><span class="img-preview-label">Click to Upload</span>`;
       }
-      
+
       document.getElementById('edit-curr-img-input').value = ''; // Reset file input
 
       openModal('modalEditForm');
     }
 
     function handleImagePreview(input, boxId) {
-        const box = document.getElementById(boxId);
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                box.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-            }
-            reader.readAsDataURL(input.files[0]);
+      const box = document.getElementById(boxId);
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          box.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
         }
+        reader.readAsDataURL(input.files[0]);
+      }
     }
 
     function openFullImage(box) {
-        const img = box.querySelector('img');
-        if (img) {
-            window.open(img.src, '_blank');
-        }
+      const img = box.querySelector('img');
+      if (img) {
+        window.open(img.src, '_blank');
+      }
     }
 
     function requestEditConfirm() {
@@ -972,14 +1001,15 @@ $system_rate = get_setting('current_rate', '33.70');
       const amount = document.getElementById('edit-amount').value;
       const prev = document.getElementById('edit-prev').value;
       const curr = document.getElementById('edit-curr').value;
-      const status = document.getElementById('edit-status').value;
 
+      if (!validateReadingValues()) {
+        return;
+      }
       if (!name) { document.getElementById('edit-name').focus(); return; }
 
       // Populate confirm modal
       document.getElementById('ec-name').textContent = name;
       document.getElementById('ec-hh').textContent = hh;
-      document.getElementById('ec-status').textContent = status.charAt(0).toUpperCase() + status.slice(1);
       document.getElementById('ec-usage').textContent = usage + ' m³';
       document.getElementById('ec-amount').textContent = '₱' + parseFloat(amount || 0).toFixed(2);
       document.getElementById('ec-range').textContent = prev + ' → ' + curr;
@@ -1008,7 +1038,6 @@ $system_rate = get_setting('current_rate', '33.70');
       const amount = document.getElementById('edit-amount').value;
       const prev = document.getElementById('edit-prev').value;
       const curr = document.getElementById('edit-curr').value;
-      const status = document.getElementById('edit-status').value;
 
       const formData = new FormData();
       formData.append('billing_id', billing_id);
@@ -1018,18 +1047,27 @@ $system_rate = get_setting('current_rate', '33.70');
       formData.append('amount_due', parseFloat(amount) || 0);
       formData.append('previous_reading', parseFloat(prev) || 0);
       formData.append('current_reading', parseFloat(curr) || 0);
-      formData.append('status', status);
-      
+
       const imgInput = document.getElementById('edit-curr-img-input');
       if (imgInput.files[0]) {
-          formData.append('current_reading_image', imgInput.files[0]);
+        formData.append('current_reading_image', imgInput.files[0]);
       }
 
-      fetch('api_edit_record.php', {
+      fetch('./api_edit_record.php', {
         method: 'POST',
         body: formData
       })
-        .then(r => r.json())
+        .then(async r => {
+          const text = await r.text();
+          if (!r.ok) {
+            throw new Error(text || r.statusText || 'Server returned an error');
+          }
+          try {
+            return JSON.parse(text);
+          } catch (jsonErr) {
+            throw new Error('Invalid response from server: ' + text);
+          }
+        })
         .then(res => {
           if (res.success) {
             // 1. Update UI Row
@@ -1038,20 +1076,7 @@ $system_rate = get_setting('current_rate', '33.70');
             _activeRow.querySelector('.usage-range').textContent = prev + ' → ' + curr;
             _activeRow.querySelector('.amount').textContent = '₱' + parseFloat(amount || 0).toFixed(2);
 
-            const chip = _activeRow.querySelector('.status-chip');
-            chip.textContent = status.toUpperCase();
-            // Reset style and class for dynamic updates
-            chip.removeAttribute('style');
-            if (status === 'paid') {
-              chip.className = 'status-chip chip-paid';
-            } else if (status === 'unpaid') {
-              chip.className = 'status-chip chip-unpaid';
-            } else {
-              // For pending, re-apply the amber style
-              chip.className = 'status-chip';
-              chip.style.background = 'var(--amber-bg)';
-              chip.style.color = 'var(--amber)';
-            }
+            // Status chip is not changed from the billings edit — only transactions can update status
 
             // 2. Prepare receipt data for print (if requested)
             const rowData = getRowData(_activeRow);
@@ -1073,7 +1098,7 @@ $system_rate = get_setting('current_rate', '33.70');
         })
         .catch(err => {
           console.error(err);
-          alert('Failed to connect to server.');
+          alert('Failed to update record: ' + (err.message || 'Server error'));
         })
         .finally(() => {
           if (btn) { btn.disabled = false; btn.textContent = '💾 Save & Print'; }
@@ -1131,24 +1156,24 @@ $system_rate = get_setting('current_rate', '33.70');
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ billing_id: id, remarks: remarks })
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          if (_activeRow) {
-            _activeRow.setAttribute('data-remarks', remarks);
-            // Optionally update a visual indicator if needed
-            flashRow(_activeRow, 'var(--amber-light)');
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            if (_activeRow) {
+              _activeRow.setAttribute('data-remarks', remarks);
+              // Optionally update a visual indicator if needed
+              flashRow(_activeRow, 'var(--amber-light)');
+            }
+            closeModal('modalRemark');
+          } else {
+            alert('Failed to save: ' + (data.error || 'Unknown error'));
           }
-          closeModal('modalRemark');
-        } else {
-          alert('Failed to save: ' + (data.error || 'Unknown error'));
-        }
-      })
-      .catch(() => alert('Network error. Check your connection.'))
-      .finally(() => {
-        btn.disabled = false;
-        btn.textContent = originalText;
-      });
+        })
+        .catch(() => alert('Network error. Check your connection.'))
+        .finally(() => {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        });
     }
 
     /* ============================================================
@@ -1165,8 +1190,18 @@ $system_rate = get_setting('current_rate', '33.70');
     }
 
     function printReceiptFromCard() {
-      // Data is already synchronized. Just open the official viewing popup.
+      // Open the receipt view and automatically print it in receipt-sized paper.
+      document.body.classList.add('print-receipt');
       openModal('modalViewReceipt');
+      const onAfterPrint = () => {
+        window.removeEventListener('afterprint', onAfterPrint);
+        closeModal('modalViewReceipt');
+        document.body.classList.remove('print-receipt');
+      };
+      window.addEventListener('afterprint', onAfterPrint);
+      setTimeout(() => {
+        window.print();
+      }, 150);
     }
 
     /* ============================================================
@@ -1220,10 +1255,35 @@ $system_rate = get_setting('current_rate', '33.70');
     function recalcUsage() {
       const prev = parseFloat(editPrev.value) || 0;
       const curr = parseFloat(editCurr.value) || 0;
-      if (curr >= prev) {
-        editUsage.value = (curr - prev).toFixed(2);
-        recalcAmount();
+      if (!editCurr.value) {
+        editUsage.value = '';
+        editAmount.value = '';
+        editCurr.setCustomValidity('');
+        return;
       }
+
+      if (curr < prev) {
+        editCurr.setCustomValidity('Current reading cannot be lower than previous reading');
+        editCurr.reportValidity();
+        editUsage.value = '';
+        editAmount.value = '';
+        return;
+      }
+
+      editCurr.setCustomValidity('');
+      editUsage.value = (curr - prev).toFixed(2);
+      recalcAmount();
+    }
+
+    function validateReadingValues() {
+      const prev = parseFloat(editPrev.value) || 0;
+      const curr = parseFloat(editCurr.value) || 0;
+      if (curr < prev) {
+        alert('Current reading cannot be lower than previous reading. Please correct the value.');
+        editCurr.focus();
+        return false;
+      }
+      return true;
     }
 
     editUsage.addEventListener('input', recalcAmount);
