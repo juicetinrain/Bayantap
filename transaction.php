@@ -100,7 +100,7 @@ unset($query_params['page']);
     <link
         href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="dashboard.css?v=4">
+    <link rel="stylesheet" href="CSS/dashboard.css?v=4">
     <link rel="stylesheet" href="CSS/transaction.css">
 </head>
 
