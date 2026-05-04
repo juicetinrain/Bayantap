@@ -53,10 +53,93 @@ $users = $stmt->fetchAll();
     .user-action-button { background: #0f766e; color: #fff; padding: 10px 16px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 700; }
     .user-action-button:hover { background: #115e59; }
     .user-role { color: var(--gray-500); font-size: .9rem; }
+
+    /* ── Confirmation Modal ── */
+    #confirm-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(3px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s ease;
+    }
+    #confirm-overlay.active {
+      opacity: 1; pointer-events: all;
+    }
+    #confirm-box {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.18);
+      padding: 36px 32px 28px;
+      width: 100%; max-width: 420px;
+      transform: translateY(12px) scale(.97);
+      transition: transform .22s ease, opacity .22s ease;
+      opacity: 0;
+    }
+    #confirm-overlay.active #confirm-box {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+    #confirm-icon {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 18px;
+    }
+    #confirm-icon.warning { background: #fef3c7; }
+    #confirm-icon.danger  { background: #fee2e2; }
+    #confirm-title {
+      font-size: 1.1rem; font-weight: 800;
+      color: #0f172a; margin-bottom: 8px;
+    }
+    #confirm-message {
+      font-size: .9rem; color: #64748b;
+      line-height: 1.6; margin-bottom: 28px;
+    }
+    #confirm-actions {
+      display: flex; gap: 10px; justify-content: flex-end;
+    }
+    #confirm-cancel {
+      padding: 10px 20px; border-radius: 8px;
+      border: 1.5px solid #e2e8f0;
+      background: #fff; color: #475569;
+      font-weight: 700; font-size: .9rem;
+      cursor: pointer; transition: background .15s, border-color .15s;
+      font-family: inherit;
+    }
+    #confirm-cancel:hover { background: #f8fafc; border-color: #cbd5e1; }
+    #confirm-ok {
+      padding: 10px 22px; border-radius: 8px;
+      border: none;
+      font-weight: 700; font-size: .9rem;
+      cursor: pointer; transition: filter .15s;
+      font-family: inherit; color: #fff;
+    }
+    #confirm-ok.warning { background: #f59e0b; }
+    #confirm-ok.warning:hover { filter: brightness(1.1); }
+    #confirm-ok.danger  { background: #ef4444; }
+    #confirm-ok.danger:hover  { filter: brightness(1.1); }
+    #confirm-ok.primary { background: var(--blue, #3b82f6); }
+    #confirm-ok.primary:hover { filter: brightness(1.1); }
   </style>
 </head>
 <body>
   <?php $current_page = 'settings'; include 'navbar.php'; ?>
+
+  <!-- Confirmation Modal -->
+  <div id="confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div id="confirm-box">
+      <div id="confirm-icon" class="warning">⚠️</div>
+      <div id="confirm-title">Confirm Action</div>
+      <div id="confirm-message">Are you sure you want to proceed?</div>
+      <div id="confirm-actions">
+        <button id="confirm-cancel" onclick="confirmResolve(false)">Cancel</button>
+        <button id="confirm-ok" class="primary" onclick="confirmResolve(true)">Confirm</button>
+      </div>
+    </div>
+  </div>
 
   <div class="settings-container">
     <div class="settings-card">
@@ -170,15 +253,56 @@ $users = $stmt->fetchAll();
   </div>
 
   <script>
+    /* ── Confirmation Modal Logic ── */
+    let confirmResolve = () => {};
 
+    function showConfirm({ title, message, okLabel = 'Confirm', okClass = 'primary', iconClass = 'warning', icon = '⚠️' }) {
+      return new Promise((resolve) => {
+        document.getElementById('confirm-title').textContent   = title;
+        document.getElementById('confirm-message').textContent = message;
+        document.getElementById('confirm-ok').textContent      = okLabel;
+        document.getElementById('confirm-ok').className        = okClass;
+        document.getElementById('confirm-icon').className      = 'confirm-icon ' + iconClass;
+        document.getElementById('confirm-icon').textContent    = icon;
+        document.getElementById('confirm-overlay').classList.add('active');
+
+        confirmResolve = (result) => {
+          document.getElementById('confirm-overlay').classList.remove('active');
+          resolve(result);
+        };
+      });
+    }
+
+    // Close on overlay click (outside the box)
+    document.getElementById('confirm-overlay').addEventListener('click', function(e) {
+      if (e.target === this) confirmResolve(false);
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') confirmResolve(false);
+    });
+
+
+    /* ── Settings Actions ── */
 
     async function saveSettings() {
+      const confirmed = await showConfirm({
+        title: 'Save System Configuration?',
+        message: 'This will update the billing rate and SMTP email settings for the entire portal. Are you sure you want to continue?',
+        okLabel: 'Yes, Save',
+        okClass: 'primary',
+        iconClass: 'warning',
+        icon: '⚙️'
+      });
+      if (!confirmed) return;
+
       const btn = document.getElementById('saveBtn');
-      const rate = document.getElementById('currentRate').value;
-      const host = document.getElementById('smtpHost').value;
-      const port = document.getElementById('smtpPort').value;
-      const user = document.getElementById('smtpUser').value;
-      const pass = document.getElementById('smtpPass').value;
+      const rate     = document.getElementById('currentRate').value;
+      const host     = document.getElementById('smtpHost').value;
+      const port     = document.getElementById('smtpPort').value;
+      const user     = document.getElementById('smtpUser').value;
+      const pass     = document.getElementById('smtpPass').value;
       const fromName = document.getElementById('smtpFromName').value;
 
       btn.disabled = true;
@@ -213,10 +337,20 @@ $users = $stmt->fetchAll();
     }
 
     async function testEmail() {
-      const btn = document.getElementById('testBtn');
       const email = prompt("Enter an email address to send a test message to:");
       if (!email) return;
 
+      const confirmed = await showConfirm({
+        title: 'Send Test Email?',
+        message: `A test email will be sent to "${email}" using the current SMTP settings. Proceed?`,
+        okLabel: 'Send Test',
+        okClass: 'primary',
+        iconClass: 'warning',
+        icon: '📧'
+      });
+      if (!confirmed) return;
+
+      const btn = document.getElementById('testBtn');
       btn.disabled = true;
       btn.textContent = 'Sending...';
 
@@ -246,14 +380,27 @@ $users = $stmt->fetchAll();
 
       const usernameInput = row.querySelector('.user-username');
       const passwordInput = row.querySelector('.user-password');
-      const btn = row.querySelector('.user-action-button');
-      const username = usernameInput.value.trim();
-      const newPassword = passwordInput.value;
+      const btn           = row.querySelector('.user-action-button');
+      const username      = usernameInput.value.trim();
+      const newPassword   = passwordInput.value;
 
       if (!username) {
         alert('Username cannot be empty.');
         return;
       }
+
+      const hasPasswordChange = newPassword.length > 0;
+      const confirmed = await showConfirm({
+        title: `Update User Account?`,
+        message: hasPasswordChange
+          ? `You are about to change the username and reset the password for this account. This action cannot be undone.`
+          : `You are about to update the username for this account. Continue?`,
+        okLabel: 'Yes, Update',
+        okClass: hasPasswordChange ? 'danger' : 'primary',
+        iconClass: hasPasswordChange ? 'danger' : 'warning',
+        icon: hasPasswordChange ? '🔑' : '👤'
+      });
+      if (!confirmed) return;
 
       btn.disabled = true;
       btn.textContent = 'Saving...';

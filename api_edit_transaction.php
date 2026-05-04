@@ -8,6 +8,21 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// 🔒 Admin-only gate
+if (!isset($_SESSION['role'])) {
+    $roleStmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+    $roleStmt->execute([$_SESSION['user_id']]);
+    $roleRow = $roleStmt->fetch(PDO::FETCH_ASSOC);
+    $_SESSION['role'] = $roleRow['role'] ?? 'treasurer';
+}
+
+if ($_SESSION['role'] !== 'admin') {
+    echo json_encode(['success' => false, 'error' => 'Access denied. Admin only.']);
+    exit;
+}
+
+// ... rest of your existing code unchanged
+
 try {
     $tx_id = $_POST['tx_id'] ?? '';
     $amount_paid = (float)($_POST['amount_paid'] ?? 0);

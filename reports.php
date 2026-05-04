@@ -45,7 +45,8 @@ if ($is_yearly) {
       SELECT 
         COUNT(*) as total_bills,
         SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_bills,
-        SUM(CASE WHEN status != 'paid' THEN amount_due ELSE 0 END) as outstanding_amount
+        SUM(CASE WHEN status = 'partial' THEN amount_due - COALESCE((SELECT SUM(amount_paid) FROM transactions t WHERE t.receipt_no = billings.receipt_no), 0)
+                 WHEN status != 'paid' THEN amount_due ELSE 0 END) as outstanding_amount
       FROM billings 
       WHERE billing_month LIKE ?
     ");
@@ -55,7 +56,8 @@ if ($is_yearly) {
       SELECT 
         COUNT(*) as total_bills,
         SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_bills,
-        SUM(CASE WHEN status != 'paid' THEN amount_due ELSE 0 END) as outstanding_amount
+        SUM(CASE WHEN status = 'partial' THEN amount_due - COALESCE((SELECT SUM(amount_paid) FROM transactions t WHERE t.receipt_no = billings.receipt_no), 0)
+                 WHEN status != 'paid' THEN amount_due ELSE 0 END) as outstanding_amount
       FROM billings 
       WHERE billing_month = ?
     ");
@@ -98,21 +100,23 @@ $top_consumers = $stmtTop->fetchAll(PDO::FETCH_ASSOC);
 // Data Tables: Delinquent Accounts
 if ($is_yearly) {
     $stmtUnpaid = $pdo->prepare("
-      SELECT SUM(b.amount_due) as amount_due, MAX(b.billing_month) as billing_month, r.full_name, r.block_no, r.lot_no, r.contact_number, r.household_id
+      SELECT SUM(CASE WHEN b.status = 'partial' THEN b.amount_due - COALESCE((SELECT SUM(t.amount_paid) FROM transactions t WHERE t.receipt_no = b.receipt_no), 0) ELSE b.amount_due END) as amount_due,
+      MAX(b.billing_month) as billing_month, r.full_name, r.block_no, r.lot_no, r.contact_number, r.household_id
       FROM billings b
       JOIN residents r ON b.resident_id = r.id
-      WHERE b.billing_month LIKE ? AND b.status IN ('unpaid', 'pending')
+      WHERE b.billing_month LIKE ? AND b.status IN ('unpaid', 'pending', 'partial')
       GROUP BY r.id
       ORDER BY amount_due DESC LIMIT 5
     ");
     $stmtUnpaid->execute(['% ' . $selected_year]);
 } else {
     $stmtUnpaid = $pdo->prepare("
-      SELECT b.amount_due, b.billing_month, r.full_name, r.block_no, r.lot_no, r.contact_number, r.household_id
+      SELECT CASE WHEN b.status = 'partial' THEN b.amount_due - COALESCE((SELECT SUM(t.amount_paid) FROM transactions t WHERE t.receipt_no = b.receipt_no), 0) ELSE b.amount_due END as amount_due,
+      b.billing_month, r.full_name, r.block_no, r.lot_no, r.contact_number, r.household_id
       FROM billings b
       JOIN residents r ON b.resident_id = r.id
-      WHERE b.billing_month = ? AND b.status IN ('unpaid', 'pending')
-      ORDER BY b.amount_due DESC LIMIT 5
+      WHERE b.billing_month = ? AND b.status IN ('unpaid', 'pending', 'partial')
+      ORDER BY amount_due DESC LIMIT 5
     ");
     $stmtUnpaid->execute([$selected_period]);
 }

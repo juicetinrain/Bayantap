@@ -6,6 +6,16 @@ if (!isset($_SESSION['user_id'])) {
 }
 require_once 'db_connect.php';
 
+// Fetch role if not already in session
+if (!isset($_SESSION['role'])) {
+    $roleStmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+    $roleStmt->execute([$_SESSION['user_id']]);
+    $roleRow = $roleStmt->fetch(PDO::FETCH_ASSOC);
+    $_SESSION['role'] = $roleRow['role'] ?? 'treasurer';
+}
+
+$is_admin = $_SESSION['role'] === 'admin';
+
 $search_q = $_GET['q'] ?? '';
 $search_month = $_GET['month'] ?? '';
 $search_type = $_GET['type'] ?? '';
@@ -180,9 +190,6 @@ $offset = ($page - 1) * $limit;
                     <h2>All Transactions</h2>
                     <p>Showing all payments and account adjustments</p>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <button class="export-btn">📥 Export</button>
-                </div>
             </div>
             <div class="table-wrap">
                 <table>
@@ -227,23 +234,40 @@ $offset = ($page - 1) * $limit;
                                         <?= htmlspecialchars($tx['block_no'] . ' ' . $tx['lot_no']) ?></div>
                                 </td>
                                 <td><span class="tx-amount positive">+<?= htmlspecialchars($amount) ?></span></td>
-                                <td><span class="tx-status-badge badge-completed">COMPLETED</span></td>
                                 <?php
-                                // Get billing status to determine if this is part of a partial payment
-                                $statusCheckStmt = $pdo->prepare("SELECT status FROM billings WHERE receipt_no = ?");
+                                // Get billing status to determine this transaction row's badge state
+                                $statusCheckStmt = $pdo->prepare("SELECT status FROM billings WHERE receipt_no = ? LIMIT 1");
                                 $statusCheckStmt->execute([$tx['receipt_no']]);
                                 $statusRow = $statusCheckStmt->fetch(PDO::FETCH_ASSOC);
                                 $billing_status = $statusRow['status'] ?? 'paid';
+                                $status_label = strtoupper($billing_status);
+                                $status_class = 'badge-pending';
+
+                                if ($billing_status === 'paid') {
+                                    $status_label = 'COMPLETED';
+                                    $status_class = 'badge-completed';
+                                } elseif ($billing_status === 'partial') {
+                                    $status_label = 'PARTIAL PAYMENT';
+                                    $status_class = 'badge-partial';
+                                } elseif ($billing_status === 'started') {
+                                    $status_label = 'STARTED';
+                                    $status_class = 'badge-pending';
+                                }
                                 ?>
+                                <td><span class="tx-status-badge <?= $status_class ?>"><?= $status_label ?></span></td>
                                 <input type="hidden" class="billing-status" value="<?= htmlspecialchars($billing_status) ?>">
                                 <td class="action-cell">
-                                  <button class="action-btn" title="Actions" onclick="toggleMenu(this)">⋯</button>
-                                  <div class="action-menu" role="menu">
-                                    <button onclick="openEditTx(this)"><span class="menu-icon">✏️</span> Edit</button>
-                                    <?php if ($tx['payment_proof']): ?>
-                                      <button onclick="viewProofImage(this)" data-proof-file="<?= htmlspecialchars($tx['payment_proof']) ?>"><span class="menu-icon">👁️</span> View Proof</button>
-                                    <?php endif; ?>
-                                  </div>
+                                    <button class="action-btn" title="Actions" onclick="toggleMenu(this)">⋯</button>
+                                    <div class="action-menu" role="menu">
+                                        <?php if ($is_admin): ?>
+                                            <button onclick="openEditTx(this)"><span class="menu-icon">✏️</span> Edit</button>
+                                        <?php else: ?>
+                                            <button disabled style="opacity:0.4; cursor:not-allowed;"><span class="menu-icon">✏️</span> Edit</button>
+                                        <?php endif; ?>
+                                        <?php if ($tx['payment_proof']): ?>
+                                            <button onclick="viewProofImage(this)" data-proof-file="<?= htmlspecialchars($tx['payment_proof']) ?>"><span class="menu-icon">👁️</span> View Proof</button>
+                                        <?php endif; ?>
+                                    </div>                         
                                 </td>
                             </tr>
                         <?php endwhile; ?>
@@ -477,15 +501,18 @@ $offset = ($page - 1) * $limit;
                         const status = billingStatusInput.value;
                         badge.classList.remove('badge-completed', 'badge-partial', 'badge-pending');
                         
-                        if (status === 'partial') {
-                            badge.classList.add('badge-partial');
-                            badge.textContent = 'PARTIAL PAYMENT';
-                        } else if (status === 'paid') {
+                        if (status === 'paid') {
                             badge.classList.add('badge-completed');
                             badge.textContent = 'COMPLETED';
+                        } else if (status === 'partial') {
+                            badge.classList.add('badge-partial');
+                            badge.textContent = 'PARTIAL PAYMENT';
+                        } else if (status === 'started') {
+                            badge.classList.add('badge-pending');
+                            badge.textContent = 'STARTED';
                         } else {
                             badge.classList.add('badge-pending');
-                            badge.textContent = 'PENDING';
+                            badge.textContent = status.toUpperCase();
                         }
                     }
                 }

@@ -20,10 +20,15 @@ if ($selected_month !== 'all' && !in_array($selected_month, $available_months) &
 $current_month = date('M Y');
 
 if ($selected_month === 'all') {
-  // Current month's pending bills (excluding started setup records)
-  $pendingStmt = $pdo->prepare("SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status NOT IN ('paid', 'started')");
+  // Current month's pending bills
+  $pendingStmt = $pdo->prepare("SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'pending'");
   $pendingStmt->execute([$current_month]);
   $pending = $pendingStmt->fetchColumn();
+
+  // Current month's partial payments
+  $partialStmt = $pdo->prepare("SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'partial'");
+  $partialStmt->execute([$current_month]);
+  $partial = $partialStmt->fetchColumn();
 
   // Past month's unpaid/pending bills (Overdue) - strictly excluding started
   $overdueStmt = $pdo->prepare("SELECT COUNT(*) FROM billings WHERE billing_month != ? AND status NOT IN ('paid', 'started') 
@@ -38,6 +43,7 @@ if ($selected_month === 'all') {
   $stats = [
     'total_households' => $pdo->query("SELECT COUNT(*) FROM residents")->fetchColumn(),
     'paid' => $paid,
+    'partial' => $partial,
     'pending' => $pending,
     'unpaid' => $overdue
   ];
@@ -47,10 +53,11 @@ if ($selected_month === 'all') {
         SELECT 
             (SELECT COUNT(*) FROM residents) AS total_households,
             (SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'paid') AS paid,
+            (SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'partial') AS partial,
             (SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'pending') AS pending,
             (SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'unpaid') AS unpaid
     ");
-  $statsStmt->execute([$selected_month, $selected_month, $selected_month]);
+  $statsStmt->execute([$selected_month, $selected_month, $selected_month, $selected_month]);
   $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
 }
 
@@ -90,8 +97,9 @@ $system_rate = get_setting('current_rate', '33.70');
   <!-- MAIN -->
   <div class="main">
     <?php
-    $total_bills = ($stats['paid'] ?? 0) + ($stats['pending'] ?? 0) + ($stats['unpaid'] ?? 0);
+    $total_bills = ($stats['paid'] ?? 0) + ($stats['partial'] ?? 0) + ($stats['pending'] ?? 0) + ($stats['unpaid'] ?? 0);
     $paid_pct = $total_bills > 0 ? round(($stats['paid'] / $total_bills) * 100) : 0;
+    $partial_pct = $total_bills > 0 ? round(($stats['partial'] / $total_bills) * 100) : 0;
     $pending_pct = $total_bills > 0 ? round(($stats['pending'] / $total_bills) * 100) : 0;
     $unpaid_pct = $total_bills > 0 ? round(($stats['unpaid'] / $total_bills) * 100) : 0;
     ?>
@@ -117,6 +125,17 @@ $system_rate = get_setting('current_rate', '33.70');
           <?= number_format($stats['paid'] ?? 0) ?>
         </div>
         <div class="stat-sub positive">📈 12% from last month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-header">
+          <div class="stat-icon">�</div>
+          <span class="stat-badge badge-blue"><?= $partial_pct ?>%</span>
+        </div>
+        <div class="stat-label">Partial Payments</div>
+        <div class="stat-value">
+          <?= number_format($stats['partial'] ?? 0) ?>
+        </div>
+        <div class="stat-sub neutral">Remaining balances</div>
       </div>
       <div class="stat-card">
         <div class="stat-header">
@@ -160,6 +179,7 @@ $system_rate = get_setting('current_rate', '33.70');
         <select class="filter-select" id="statusFilter" aria-label="Filter by status">
           <option value="">All Status</option>
           <option value="paid">Paid</option>
+          <option value="partial">Partial Payment</option>
           <option value="overdue">Overdue</option>
           <option value="pending">Pending</option>
         </select>
@@ -1095,7 +1115,9 @@ $system_rate = get_setting('current_rate', '33.70');
             _activeRow.querySelector('.amount').textContent = '₱' + parseFloat(amount || 0).toFixed(2);
 
             // Update status if it was 'started' to 'pending'
-            if (_activeRow.getAttribute('data-status') === 'started') {
+            // Update status chip based on current status
+            const currentStatus = _activeRow.getAttribute('data-status');
+            if (currentStatus === 'started') {
               _activeRow.setAttribute('data-status', 'pending');
               const chip = _activeRow.querySelector('.status-chip');
               if (chip) {
@@ -1103,6 +1125,14 @@ $system_rate = get_setting('current_rate', '33.70');
                 chip.style.background = 'var(--amber-bg)';
                 chip.style.color = 'var(--amber)';
                 chip.textContent = 'PENDING';
+              }
+            } else if (currentStatus === 'partial') {
+              const chip = _activeRow.querySelector('.status-chip');
+              if (chip) {
+                chip.className = 'status-chip chip-partial';
+                chip.style.background = '#e0e7ff';
+                chip.style.color = '#4f46e5';
+                chip.textContent = 'PARTIAL PAYMENT';
               }
             }
 

@@ -334,8 +334,8 @@
         }
 
         .badge-partial {
-            background: var(--amber-bg);
-            color: var(--amber);
+            background: var(--blue-light);
+            color: var(--blue);
         }
 
         .action-btn {

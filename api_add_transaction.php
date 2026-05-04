@@ -34,11 +34,9 @@ try {
         throw new Exception('Billing record not found for this receipt number.');
     }
 
-    // 2. Check if a transaction already exists
-    $txCheck = $pdo->prepare("SELECT id FROM transactions WHERE receipt_no = ? LIMIT 1");
-    $txCheck->execute([$receipt_no]);
-    if ($txCheck->fetch()) {
-        throw new Exception('A transaction already exists for this receipt number.');
+    // 2. Prevent duplicate payments only if billing is already fully paid
+    if ($billing['status'] === 'paid') {
+        throw new Exception('This billing is already fully paid.');
     }
 
     // 3. Handle proof of payment image upload

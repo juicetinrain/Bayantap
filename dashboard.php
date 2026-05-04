@@ -20,9 +20,14 @@ $current_month = date('M Y');
 
 if ($selected_month === 'all') {
     // Current month's pending bills
-    $pendingStmt = $pdo->prepare("SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status != 'paid'");
+    $pendingStmt = $pdo->prepare("SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'pending'");
     $pendingStmt->execute([$current_month]);
     $pending = $pendingStmt->fetchColumn();
+
+    // Current month's partial payments
+    $partialStmt = $pdo->prepare("SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'partial'");
+    $partialStmt->execute([$current_month]);
+    $partial = $partialStmt->fetchColumn();
 
     // Past month's unpaid/pending bills (Overdue)
     $overdueStmt = $pdo->prepare("SELECT COUNT(*) FROM billings WHERE billing_month != ? AND status != 'paid' 
@@ -37,6 +42,7 @@ if ($selected_month === 'all') {
     $stats = [
         'total_households' => $pdo->query("SELECT COUNT(*) FROM residents")->fetchColumn(),
         'paid' => $paid,
+        'partial' => $partial,
         'pending' => $pending,
         'unpaid' => $overdue
     ];
@@ -46,10 +52,11 @@ if ($selected_month === 'all') {
         SELECT 
             (SELECT COUNT(*) FROM residents) AS total_households,
             (SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'paid') AS paid,
+            (SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'partial') AS partial,
             (SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'pending') AS pending,
             (SELECT COUNT(*) FROM billings WHERE billing_month = ? AND status = 'unpaid') AS unpaid
     ");
-    $statsStmt->execute([$selected_month, $selected_month, $selected_month]);
+    $statsStmt->execute([$selected_month, $selected_month, $selected_month, $selected_month]);
     $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
 }
 ?>
@@ -85,8 +92,9 @@ if ($selected_month === 'all') {
   <!-- MAIN -->
   <div class="main">
     <?php
-    $total_bills = ($stats['paid'] ?? 0) + ($stats['pending'] ?? 0) + ($stats['unpaid'] ?? 0);
+    $total_bills = ($stats['paid'] ?? 0) + ($stats['partial'] ?? 0) + ($stats['pending'] ?? 0) + ($stats['unpaid'] ?? 0);
     $paid_pct = $total_bills > 0 ? round(($stats['paid'] / $total_bills) * 100) : 0;
+    $partial_pct = $total_bills > 0 ? round(($stats['partial'] / $total_bills) * 100) : 0;
     $pending_pct = $total_bills > 0 ? round(($stats['pending'] / $total_bills) * 100) : 0;
     $unpaid_pct = $total_bills > 0 ? round(($stats['unpaid'] / $total_bills) * 100) : 0;
     ?>
@@ -112,6 +120,17 @@ if ($selected_month === 'all') {
           <?= number_format($stats['paid'] ?? 0) ?>
         </div>
         <div class="stat-sub positive">📈 12% from last month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-header">
+          <div class="stat-icon">�</div>
+          <span class="stat-badge badge-blue"><?= $partial_pct ?>%</span>
+        </div>
+        <div class="stat-label">Partial Payments</div>
+        <div class="stat-value">
+          <?= number_format($stats['partial'] ?? 0) ?>
+        </div>
+        <div class="stat-sub neutral">Partially paid balances</div>
       </div>
       <div class="stat-card">
         <div class="stat-header">
@@ -153,7 +172,8 @@ if ($selected_month === 'all') {
         <select class="filter-select" id="statusFilter" aria-label="Filter by status">
           <option value="">All Status</option>
           <option value="paid">Paid</option>
-          <option value="unpaid">Unpaid</option>
+          <option value="partial">Partial Payment</option>
+          <option value="overdue">Overdue</option>
           <option value="pending">Pending</option>
         </select>
       </div>

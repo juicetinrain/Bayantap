@@ -275,13 +275,13 @@ $is_superuser = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
   }
 
   function submitProfileUpdate() {
-    const username = document.getElementById('prof-username').value.trim();
-    const newPass = document.getElementById('prof-new-pass').value;
+    const displayName = document.getElementById('prof-display-name').value.trim();
+    const newPass     = document.getElementById('prof-new-pass').value;
     const confirmPass = document.getElementById('prof-confirm-pass').value;
     const currentPass = document.getElementById('prof-current-pass').value;
 
-    if (!username) {
-        alert("Username cannot be empty.");
+    if (!displayName) {
+        alert("Display name cannot be empty.");
         return;
     }
     if (newPass && newPass !== confirmPass) {
@@ -299,7 +299,7 @@ $is_superuser = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
     btn.innerHTML = '⏳ Saving...';
 
     const formData = new FormData();
-    formData.append('username', username);
+    formData.append('display_name', displayName);
     formData.append('new_password', newPass);
     formData.append('current_password', currentPass);
 
@@ -311,9 +311,9 @@ $is_superuser = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
     .then(res => {
         if (res.success) {
             alert('✅ Profile updated successfully!');
-            window.location.reload(); // Reload to reflect new username in the UI
+            window.location.reload();
         } else {
-            alert('❌ Error: ' + (res.error || 'Unknown error'));
+            alert('❌ Error: ' + (res.error || res.message || 'Unknown error'));
         }
     })
     .catch(() => alert('❌ Network error. Please try again.'))
@@ -321,6 +321,6 @@ $is_superuser = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
         btn.disabled = false;
         btn.innerHTML = originalText;
     });
-  }
+    }
 
 </script>

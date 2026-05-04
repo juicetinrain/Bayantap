@@ -24,7 +24,10 @@ if ($search_q) {
 $stmt = $pdo->prepare("
     SELECT 
         r.id, r.household_id, r.full_name, r.block_no, r.lot_no, r.contact_number,
-        SUM(b.amount_due) as total_overdue,
+        SUM(CASE 
+              WHEN b.status = 'partial' THEN b.amount_due - COALESCE((SELECT SUM(t.amount_paid) FROM transactions t WHERE t.receipt_no = b.receipt_no), 0)
+              ELSE b.amount_due
+            END) as total_overdue,
         COUNT(b.id) as months_overdue,
         (SELECT remarks FROM billings WHERE resident_id = r.id AND status != 'paid' AND (remarks IS NOT NULL AND remarks != '') ORDER BY id DESC LIMIT 1) as latest_remark
     FROM residents r
@@ -93,7 +96,6 @@ $total_delinquent_amount = array_sum(array_column($overdue_residents, 'total_ove
               <th style="width: 15%;">Overdue Months</th>
               <th style="width: 25%;">Latest Remark</th>
               <th style="width: 12%; text-align: right;">Balance</th>
-              <th style="width: 8%; text-align: right;">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -115,9 +117,6 @@ $total_delinquent_amount = array_sum(array_column($overdue_residents, 'total_ove
                 </td>
                 <td style="text-align:right;">
                   <div style="font-weight:800; color:var(--red); font-size: 1.05rem;">₱<?= number_format($r['total_overdue'] ?? 0, 2) ?></div>
-                </td>
-                <td style="text-align:right;">
-                  <button class="btn-remark" style="padding: 6px 10px;" onclick="viewDetails(<?= $r['id'] ?>, '<?= addslashes($r['full_name']) ?>')">View</button>
                 </td>
               </tr>
             <?php endforeach; ?>
@@ -146,7 +145,6 @@ $total_delinquent_amount = array_sum(array_column($overdue_residents, 'total_ove
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Remarks</th>
-                <th style="text-align:right;">Action</th>
               </tr>
             </thead>
             <tbody id="detailsBody"></tbody>
@@ -197,9 +195,6 @@ $total_delinquent_amount = array_sum(array_column($overdue_residents, 'total_ove
                 <td style="font-weight:700; color:var(--red);">₱${parseFloat(b.amount_due).toLocaleString()}</td>
                 <td><span class="months-pill" style="background:var(--amber-bg); color:var(--amber);">${b.status.toUpperCase()}</span></td>
                 <td class="remark-text" id="rem-${b.id}">${b.remarks || 'No remarks yet'}</td>
-                <td style="text-align:right;">
-                  <button class="btn-remark" onclick="openRemark(${b.id}, '${b.billing_month}', '${(b.remarks || '').replace(/'/g, "\\'")}')">Edit Note</button>
-                </td>
               </tr>
             `).join('');
           }
