@@ -17,8 +17,8 @@
 <br>
 
 - billing.php
-  + <span style="color: #2ECC71;">Month drop down filter to auto-adjust via device calendar</span>
-  + <span style="color: #2ECC71;">Receipt date will be billing period instead</span>
+  + Month drop down filter to auto-adjust via device calendar
+  + Receipt date will be billing period instead
   + Add image reader for 'input billing' to streamline the process even more
   + Add arrows to signify the increase / decrease in the rate per m³
   + Account for readers to input the images for input reading
