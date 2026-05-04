@@ -57,6 +57,9 @@
       margin-top: 4px;
     }
 
+    /* ============================================================
+       STANDARD PRINT — A5 portrait (default / PDF / non-thermal)
+    ============================================================ */
     @media print {
       @page {
         size: A5 portrait;
@@ -70,6 +73,10 @@
         margin: 0 !important;
         padding: 0 !important;
         background: #fff !important;
+      }
+
+      #thermal-receipt-wrapper {
+        display: none !important;
       }
 
       body.print-receipt .receipt-card {
@@ -108,5 +115,207 @@
       body.print-receipt .table-wrap,
       body.print-receipt .receipt-card .btn-print {
         display: none !important;
+      }
+    }
+
+    /* ============================================================
+       THERMAL PRINT — 48mm roll / GOOJPRT PT-210 / POS58
+       Add class "print-thermal" to <body> when printing to thermal.
+       Activated via the printThermal() JS function below.
+    ============================================================ */
+    @media print {
+
+      /* Override page size only for thermal mode */
+      body.print-thermal {
+        /* Nothing here — @page override is below */
+      }
+
+      body.print-thermal ~ * { display: none !important; } /* safety fallback */
+    }
+
+    /* Separate @page rule for thermal — must be in its own @media print block */
+    body.print-thermal * { box-sizing: border-box; }
+
+    @media print {
+      body.print-thermal {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        width: 58mm !important;
+      }
+
+      /* Hide absolutely everything on the page first */
+      body.print-thermal nav,
+      body.print-thermal .page-header,
+      body.print-thermal .toolbar,
+      body.print-thermal .stats-grid,
+      body.print-thermal .content-grid,
+      body.print-thermal .action-menu,
+      body.print-thermal .action-btn,
+      body.print-thermal .modal-backdrop,
+      body.print-thermal .receipt-card .btn-print,
+      body.print-thermal .receipt-card .receipt-header {
+        display: none !important;
+      }
+
+      /* Show ONLY the thermal receipt wrapper */
+      body.print-thermal #thermal-receipt-wrapper {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 54mm !important;
+        margin: 0 !important;
+        padding: 3mm 2.5mm 2mm 2.5mm !important;
+        background: #fff !important;
+        font-family: 'Courier New', Courier, monospace !important;
+        font-size: 7.5pt !important;
+        line-height: 1.35 !important;
+        color: #000 !important;
+      }
+
+      /* Thermal receipt inner elements */
+      #thermal-receipt-wrapper * {
+        color: #000 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+      }
+
+      #thermal-receipt-wrapper .th-center {
+        display: block !important;
+        width: 100% !important;
+        text-align: center !important;
+      }
+
+      #thermal-receipt-wrapper .th-title {
+        font-size: 12.5pt !important;
+        font-weight: bold !important;
+        letter-spacing: 0.25em !important;
+        margin-bottom: 1mm !important;
+      }
+
+      #thermal-receipt-wrapper .th-sub {
+        font-size: 7pt !important;
+        letter-spacing: 0.05em !important;
+      }
+
+      #thermal-receipt-wrapper .th-divider {
+        border: none !important;
+        border-top: 1px dashed #000 !important;
+        margin: 2mm 0 !important;
+        width: 100% !important;
+      }
+
+      #thermal-receipt-wrapper .th-details-box {
+        display: block !important;
+        border: 1px dashed #000 !important;
+        padding: 1.8mm 1.5mm 1mm 1.5mm !important;
+        margin: 1.2mm 0 2mm 0 !important;
+      }
+
+      #thermal-receipt-wrapper .th-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        font-size: 7.5pt !important;
+        margin: 0.8mm 0 !important;
+        width: 100% !important;
+        padding-bottom: 0.35mm !important;
+        border-bottom: 1px dashed #000 !important;
+      }
+
+      #thermal-receipt-wrapper .th-row:last-child {
+        border-bottom: none !important;
+      }
+
+      #thermal-receipt-wrapper .th-row .th-key {
+        flex: 0 0 auto !important;
+        min-width: 18mm !important;
+        margin-right: 1mm !important;
+        white-space: nowrap !important;
+      }
+
+      #thermal-receipt-wrapper .th-row .th-val {
+        flex: 1 1 auto !important;
+        text-align: right !important;
+        word-break: break-word !important;
+      }
+
+      #thermal-receipt-wrapper .th-total-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        font-size: 9pt !important;
+        font-weight: bold !important;
+        border-top: 1px solid #000 !important;
+        border-bottom: 1px solid #000 !important;
+        padding: 1mm 0 !important;
+        margin: 2mm 0 !important;
+      }
+
+      #thermal-receipt-wrapper .th-total-row span:first-child {
+        text-transform: uppercase !important;
+        letter-spacing: 0.03em !important;
+      }
+
+      /* QR code centered block */
+      #thermal-receipt-wrapper .th-qr-center {
+        display: block !important;
+        text-align: center !important;
+        margin: 1.5mm auto 1mm auto !important;
+        width: 100% !important;
+      }
+
+      #thermal-receipt-wrapper .th-qr-center img {
+        display: block !important;
+        margin: 0 auto !important;
+        width: 28mm !important;
+        height: 28mm !important;
+      }
+
+      #thermal-receipt-wrapper .th-sig-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        margin-top: 4.5mm !important;
+      }
+
+      #thermal-receipt-wrapper .th-sig-box {
+        width: 45% !important;
+        text-align: center !important;
+        font-size: 6.5pt !important;
+        border-top: 1px solid #000 !important;
+        padding-top: 1mm !important;
+      }
+
+      #thermal-receipt-wrapper .th-sig-box > div:first-child {
+        font-size: 6.5pt !important;
+        line-height: 1.4 !important;
+        margin-bottom: 1mm !important;
+      }
+
+      #thermal-receipt-wrapper .th-sig-box > div:last-child {
+        font-size: 7pt !important;
+        font-weight: bold !important;
+        margin-top: 1mm !important;
+      }
+
+      #thermal-receipt-wrapper .th-footer {
+        text-align: center !important;
+        font-size: 6.5pt !important;
+        margin-top: 3mm !important;
+        line-height: 1.4 !important;
+      }
+
+      #thermal-receipt-wrapper .th-section-label {
+        font-weight: bold !important;
+        font-size: 7pt !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        margin: 1.5mm 0 0.5mm 0 !important;
+        display: block !important;
+      }
+
+      #thermal-receipt-wrapper .th-center + .th-center {
+        margin-top: 0.4mm !important;
       }
     }

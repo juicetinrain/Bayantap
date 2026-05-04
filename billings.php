@@ -9,8 +9,8 @@ require_once 'db_connect.php';
 // Fetch distinct months for filter
 $mStmt = $pdo->query("SELECT DISTINCT billing_month FROM billings ORDER BY STR_TO_DATE(CONCAT('01 ', billing_month), '%d %b %Y') ASC");
 $available_months = $mStmt->fetchAll(PDO::FETCH_COLUMN);
-// Default to most recent month if not specified
-$selected_month = $_GET['month'] ?? ($available_months[0] ?? date('M Y'));
+// Default to current month if not specified
+$selected_month = $_GET['month'] ?? date('M Y');
 if ($selected_month !== 'all' && !in_array($selected_month, $available_months) && !empty($available_months)) {
   $selected_month = $available_months[0];
 }
@@ -351,7 +351,10 @@ $system_rate = get_setting('current_rate', '33.70');
             <div class="title">Receipt Review</div>
             <div class="sub">Official payment receipt</div>
           </div>
-          <button class="btn-print" onclick="printReceiptFromCard()">🖨️ PRINT</button>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-print" onclick="printReceiptFromCard()">🖨️ PRINT/PDF (A5)</button>
+            <button class="btn-print" onclick="printThermal()" style="background:#000;color:#fff;">🧾 THERMAL PRINT</button>
+          </div>
         </div>
         <div class="receipt-body">
           <div class="receipt-logo">
@@ -363,7 +366,7 @@ $system_rate = get_setting('current_rate', '33.70');
           <div class="receipt-meta">
             <div class="receipt-row"><span class="key">Receipt No:</span><span class="val bold"
                 id="rc-receipt-no">MV-2026-0XXX</span></div>
-            <div class="receipt-row"><span class="key">Date:</span><span class="val" id="rc-date">January 20,
+            <div class="receipt-row"><span class="key">Billing Period:</span><span class="val" id="rc-date">January 20,
                 2026</span></div>
             <div class="receipt-row"><span class="key">Household No:</span><span class="val" id="rc-hh">---</span></div>
             <div class="receipt-row"><span class="key">Name:</span><span class="val bold" id="rc-name">---</span></div>
@@ -433,7 +436,7 @@ $system_rate = get_setting('current_rate', '33.70');
         <div class="receipt-meta">
           <div class="receipt-row"><span class="key">Receipt No:</span><span class="val bold"
               id="vr-receipt-no">—</span></div>
-          <div class="receipt-row"><span class="key">Date:</span><span class="val" id="vr-date">—</span></div>
+          <div class="receipt-row"><span class="key">Billing Period:</span><span class="val" id="vr-date">—</span></div>
           <div class="receipt-row"><span class="key">Household No:</span><span class="val" id="vr-hh">—</span></div>
           <div class="receipt-row"><span class="key">Name:</span><span class="val bold" id="vr-name">—</span></div>
           <div class="receipt-row"><span class="key">Email:</span><span class="val" id="vr-email">—</span></div>
@@ -476,14 +479,78 @@ $system_rate = get_setting('current_rate', '33.70');
           For inquiries: Barangay Hall, Marcos Village
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="modal-btn modal-btn-cancel" onclick="closeModal('modalViewReceipt')">Close</button>
+      <div class="modal-footer" style="flex-wrap: nowrap; overflow-x: auto; gap: 3px;">
         <button class="modal-btn modal-btn-primary" onclick="sendEmailReceipt()" id="emailReceiptBtn"
-          style="background:var(--blue-light); color:var(--blue); border:1px solid var(--blue-200);">📧 Send
+          style="background:var(--blue-light); color:var(--blue); border:1px solid var(--blue-200);">📧Send
           Email</button>
-        <button class="modal-btn modal-btn-primary" onclick="window.print()">🖨️ Print</button>
+        <button class="modal-btn modal-btn-primary" onclick="window.print()">🖨️Print/PDF(A5)</button>
+        <button class="modal-btn modal-btn-primary" onclick="printThermal()" style="background-color: #000; color: #fff;">🧾Thermal Print</button>
       </div>
     </div>
+  </div>
+
+  <div id="thermal-receipt-wrapper" style="display:none;">
+ 
+  <!-- Header — uses .th-center + .th-title + .th-sub from billings.css -->
+    <div class="th-center">
+      <span class="th-center th-title" id="th-title">BAYANTAP</span>
+      <span class="th-center th-sub" id="th-sub">Marcos Village Water District</span>
+      <span class="th-center th-sub">Official Payment Receipt</span>
+    </div>
+ 
+    <hr class="th-divider">
+ 
+  <!-- Info Fields -->
+    <div class="th-row"><span class="th-key">Receipt No:</span><span class="th-val" id="th-receipt-no">—</span></div>
+    <div class="th-row"><span class="th-key">Billing Period:</span><span class="th-val" id="th-date">—</span></div>
+    <div class="th-row"><span class="th-key">Household No:</span><span class="th-val" id="th-hh">—</span></div>
+    <div class="th-row"><span class="th-key">Name:</span><span class="th-val" id="th-name">—</span></div>
+    <div class="th-row"><span class="th-key">Email:</span><span class="th-val" id="th-email">—</span></div>
+    <div class="th-row"><span class="th-key">Contact No:</span><span class="th-val" id="th-contact">—</span></div>
+ 
+    <hr class="th-divider">
+ 
+  <!-- Billing Details — uses .th-section-label + .th-row from billings.css -->
+    <span class="th-section-label">Billing Details</span>
+    <div class="th-details-box">
+      <div class="th-row"><span class="th-key">Usage:</span><span class="th-val" id="th-usage">—</span></div>
+      <div class="th-row"><span class="th-key">Reading Range:</span><span class="th-val" id="th-range">—</span></div>
+      <div class="th-row"><span class="th-key">Rate Calculation:</span><span class="th-val" id="th-calc">—</span></div>
+    </div>
+ 
+  <!-- Total Amount — uses .th-total-row from billings.css -->
+    <div class="th-total-row">
+      <span>Total Amount Due:</span>
+      <span id="th-amount">—</span>
+    </div>
+
+  <!-- QR Code — uses .th-qr-center from billings.css -->
+    <div class="th-qr-center" id="th-qr-wrapper">
+      <!-- QR image injected by printThermal() -->
+    </div>
+  <!-- QR label — uses .th-center + .th-sub -->
+    <span class="th-center th-sub">SCAN TO VIEW BALANCE &amp; HISTORY</span>
+
+    <hr class="th-divider">
+
+  <!-- Signatures — uses .th-sig-row + .th-sig-box from billings.css -->
+    <div class="th-sig-row">
+      <div class="th-sig-box">
+        <div>Resident<br>Signature</div>
+        <div id="th-resident">—</div>
+      </div>
+      <div class="th-sig-box">
+        <div>Treasurer<br>Signature</div>
+        <div id="th-treasurer">Admin</div>
+      </div>
+    </div>
+
+  <!-- Footer — uses .th-footer from billings.css -->
+    <div class="th-footer">
+      Official Receipt · BayanTap Water District<br>
+      For inquiries: Barangay Hall, Marcos Village
+    </div>
+
   </div>
 
   <!-- ============================================================
@@ -817,7 +884,14 @@ $system_rate = get_setting('current_rate', '33.70');
       const isPaid = d.status.toLowerCase() === 'paid';
       const badgeText = isPaid ? '✓ Payment Received' : 'Pending/Unpaid';
       const badgeClass = isPaid ? 'paid-badge' : '';
-      const rDate = d.date.replace('Paid: ', '') || 'Pending';
+      let billingPeriod = d.date.replace('Paid: ', '') || 'Pending';
+      if (billingPeriod !== 'Pending') {
+        const date = new Date(billingPeriod + ' 1');
+        date.setMonth(date.getMonth() + 1);
+        const dueMonth = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        billingPeriod = billingPeriod + ' (Due: ' + dueMonth + ')';
+      }
+      const rDate = billingPeriod;
 
       // Update Modal
       document.getElementById('vr-receipt-no').textContent = rcNo;
@@ -1262,6 +1336,83 @@ $system_rate = get_setting('current_rate', '33.70');
       }, 150);
     }
 
+  /**
+   * printThermal()
+   * Copies receipt data into the thermal wrapper, switches the page
+   * to thermal mode, prints, then restores everything.
+   *
+   * Call this from a "Thermal Print" button.
+   * It reads the same IDs already populated by updateReceiptData() /
+   * openViewReceipt(), so no extra data wiring is needed.
+   */
+  function printThermal() {
+    // ── 1. Read data from whichever receipt is currently displayed ──
+    // Prefer the modal view receipt fields (vr-*); fall back to card (rc-*)
+    function getText(modalId, cardId) {
+      return (document.getElementById(modalId)?.textContent?.trim() ||
+              document.getElementById(cardId)?.textContent?.trim() || '—');
+    }
+ 
+    document.getElementById('th-receipt-no').textContent = getText('vr-receipt-no', 'rc-receipt-no');
+    document.getElementById('th-date').textContent        = getText('vr-date',        'rc-date');
+    document.getElementById('th-hh').textContent          = getText('vr-hh',          'rc-hh');
+    document.getElementById('th-name').textContent        = getText('vr-name',         'rc-name');
+    document.getElementById('th-email').textContent       = getText('vr-email',        'rc-email');
+    document.getElementById('th-contact').textContent     = getText('vr-contact',      'rc-contact');
+    document.getElementById('th-usage').textContent       = getText('vr-usage',        'rc-usage');
+    document.getElementById('th-range').textContent       = getText('vr-range',        'rc-range');
+    document.getElementById('th-calc').textContent        = getText('vr-calc',         'rc-calc');
+    document.getElementById('th-amount').textContent      = getText('vr-amount',       'rc-amount');
+ 
+    // Resident name for signature line
+    const resident = document.getElementById('vr-name')?.textContent?.trim()
+                  || document.getElementById('rc-name')?.textContent?.trim()
+                  || '—';
+    document.getElementById('th-resident').textContent = resident;
+ 
+    // Treasurer name (grab from either sig element)
+    const treasurer = document.querySelector('#modalViewReceipt .sig-name:last-child')?.textContent?.trim()
+                   || document.querySelector('.receipt-card .sig-name:last-child')?.textContent?.trim()
+                   || 'Admin';
+    document.getElementById('th-treasurer').textContent = treasurer;
+ 
+    // QR code — copy the QR <img> from the receipt card if present
+    const qrWrapper = document.getElementById('th-qr-wrapper');
+    qrWrapper.innerHTML = '';
+    const qrImg = document.querySelector('#vr-qr img, #rc-qr img');
+    if (qrImg) {
+      const cloned = qrImg.cloneNode(true);
+      cloned.style.cssText = 'display:block;margin:0 auto;width:28mm;height:28mm;';
+      qrWrapper.appendChild(cloned);
+    }
+ 
+    // ── 2. Show the thermal wrapper ──
+    const wrapper = document.getElementById('thermal-receipt-wrapper');
+    wrapper.style.display = 'block';
+ 
+    // ── 3. Switch body to thermal mode & override @page size ──
+    document.body.classList.add('print-thermal');
+ 
+    // Inject a temporary <style> to override @page for this print job
+    const style = document.createElement('style');
+    style.id = 'thermal-page-override';
+    style.textContent = `@media print { @page { size: 58mm auto; margin: 0; } }`;
+    document.head.appendChild(style);
+ 
+    function cleanup() {
+      wrapper.style.display = 'none';
+      document.body.classList.remove('print-thermal');
+      const existing = document.getElementById('thermal-page-override');
+      if (existing) existing.remove();
+      window.removeEventListener('afterprint', cleanup);
+    }
+ 
+    window.addEventListener('afterprint', cleanup);
+ 
+    // ── 5. Print ──
+    setTimeout(() => window.print(), 80);
+  }
+  
     /* ============================================================
        VISUAL FLASH — brief highlight after save
     ============================================================ */
