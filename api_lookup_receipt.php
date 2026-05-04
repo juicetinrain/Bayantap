@@ -36,10 +36,21 @@ try {
     // Check if already paid
     $already_paid = ($row['status'] === 'paid');
 
-    // Check if a transaction already exists for this receipt
+    // Check if a transaction already exists for this receipt (first transaction)
     $txCheck = $pdo->prepare("SELECT id FROM transactions WHERE receipt_no = ? LIMIT 1");
     $txCheck->execute([$receipt_no]);
     $tx_exists = (bool)$txCheck->fetch();
+
+    // Calculate total paid and remaining balance for partial payments
+    $total_paid = 0;
+    $remaining_balance = (float)$row['amount_due'];
+    if ($row['status'] === 'partial') {
+        $paidStmt = $pdo->prepare("SELECT SUM(amount_paid) as total_paid FROM transactions WHERE receipt_no = ?");
+        $paidStmt->execute([$receipt_no]);
+        $paidRow = $paidStmt->fetch(PDO::FETCH_ASSOC);
+        $total_paid = (float)($paidRow['total_paid'] ?? 0);
+        $remaining_balance = (float)$row['amount_due'] - $total_paid;
+    }
 
     echo json_encode([
         'success' => true,
@@ -61,7 +72,10 @@ try {
             'contact_number' => $row['contact_number'],
             'email' => $row['email'],
             'already_paid' => $already_paid,
-            'transaction_exists' => $tx_exists
+            'transaction_exists' => $tx_exists,
+            'is_partial' => ($row['status'] === 'partial'),
+            'total_paid' => number_format($total_paid, 2, '.', ''),
+            'remaining_balance' => number_format($remaining_balance, 2, '.', '')
         ]
     ]);
 } catch (Exception $e) {

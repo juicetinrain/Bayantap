@@ -220,6 +220,17 @@ $system_rate = get_setting('current_rate', '33.70');
                 $usage_range = $row['previous_reading'] . " → " . $row['current_reading'];
                 $amount = "₱" . number_format($row['amount_due'], 2);
 
+                // Calculate remaining balance for partial payments
+                $remaining_balance = $row['amount_due'];
+                if ($row['status'] === 'partial') {
+                    $paidStmt = $pdo->prepare("SELECT SUM(amount_paid) as total_paid FROM transactions WHERE receipt_no = ?");
+                    $paidStmt->execute([$row['receipt_no']]);
+                    $paidRow = $paidStmt->fetch(PDO::FETCH_ASSOC);
+                    $total_paid = (float)($paidRow['total_paid'] ?? 0);
+                    $remaining_balance = (float)$row['amount_due'] - $total_paid;
+                    $amount = "₱" . number_format($remaining_balance, 2) . " <span style='font-size:0.75rem; color:var(--gray-400);'>(remaining)</span>";
+                }
+
                 $current_month_comp = date('M Y');
                 $is_past_month = ($row['billing_month'] !== $current_month_comp &&
                   strtotime("01 " . $row['billing_month']) < strtotime("01 " . $current_month_comp));
@@ -235,7 +246,7 @@ $system_rate = get_setting('current_rate', '33.70');
                   $status_chip = '<span class="status-chip chip-unpaid">OVERDUE</span>';
                   $date_text = "Overdue (" . $row['billing_month'] . ")";
                 } elseif ($row['status'] === 'partial') {
-                  $status_chip = '<span class="status-chip chip-partial" style="background:#e0e7ff;color:#4f46e5;">PARTIAL</span>';
+                  $status_chip = '<span class="status-chip chip-partial" style="background:#e0e7ff;color:#4f46e5;">PARTIAL PAYMENT</span>';
                   $date_text = "Partially Paid";
                 } elseif ($row['status'] === 'pending') {
                   $status_chip = '<span class="status-chip" style="background:var(--amber-bg);color:var(--amber);">PENDING</span>';
@@ -285,7 +296,14 @@ $system_rate = get_setting('current_rate', '33.70');
                     </div>
                   </td>
                   <td><span class="amount">
-                      <?= htmlspecialchars($amount) ?>
+                      <?php
+                      // Display amount with remaining label for partial payments
+                      if ($row['status'] === 'partial') {
+                          echo $amount;
+                      } else {
+                          echo htmlspecialchars($amount);
+                      }
+                      ?>
                     </span></td>
                   <td>
                     <?= $status_chip ?>
@@ -821,7 +839,7 @@ $system_rate = get_setting('current_rate', '33.70');
       rcBadge.textContent = badgeClass ? badgeText : '';
 
       // QR Code Generation
-      const qrData = 'http://192.168.100.129/Bayantap/portal.php?token=' + d.token;
+      const qrData = 'http://192.168.110.189/Bayantap/portal.php?token=' + d.token;
       // Clear previous QR
       document.getElementById('vr-qr').innerHTML = '';
       document.getElementById('rc-qr').innerHTML = '';
@@ -1076,7 +1094,17 @@ $system_rate = get_setting('current_rate', '33.70');
             _activeRow.querySelector('.usage-range').textContent = prev + ' → ' + curr;
             _activeRow.querySelector('.amount').textContent = '₱' + parseFloat(amount || 0).toFixed(2);
 
-            // Status chip is not changed from the billings edit — only transactions can update status
+            // Update status if it was 'started' to 'pending'
+            if (_activeRow.getAttribute('data-status') === 'started') {
+              _activeRow.setAttribute('data-status', 'pending');
+              const chip = _activeRow.querySelector('.status-chip');
+              if (chip) {
+                chip.className = 'status-chip';
+                chip.style.background = 'var(--amber-bg)';
+                chip.style.color = 'var(--amber)';
+                chip.textContent = 'PENDING';
+              }
+            }
 
             // 2. Prepare receipt data for print (if requested)
             const rowData = getRowData(_activeRow);

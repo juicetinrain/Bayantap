@@ -333,6 +333,11 @@
             color: var(--red);
         }
 
+        .badge-partial {
+            background: var(--amber-bg);
+            color: var(--amber);
+        }
+
         .action-btn {
             background: transparent;
             border: none;

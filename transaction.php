@@ -39,9 +39,9 @@ if ($search_type !== '') {
 
 if ($search_status !== '') {
     if ($search_status === 'completed') {
-        $where_clauses[] = "t.status = 'complete'";
+        $where_clauses[] = "(SELECT status FROM billings WHERE receipt_no = t.receipt_no LIMIT 1) = 'paid'";
     } elseif ($search_status === 'partial') {
-        $where_clauses[] = "t.status = 'partial'";
+        $where_clauses[] = "(SELECT status FROM billings WHERE receipt_no = t.receipt_no LIMIT 1) = 'partial'";
     }
 }
 
@@ -228,6 +228,14 @@ $offset = ($page - 1) * $limit;
                                 </td>
                                 <td><span class="tx-amount positive">+<?= htmlspecialchars($amount) ?></span></td>
                                 <td><span class="tx-status-badge badge-completed">COMPLETED</span></td>
+                                <?php
+                                // Get billing status to determine if this is part of a partial payment
+                                $statusCheckStmt = $pdo->prepare("SELECT status FROM billings WHERE receipt_no = ?");
+                                $statusCheckStmt->execute([$tx['receipt_no']]);
+                                $statusRow = $statusCheckStmt->fetch(PDO::FETCH_ASSOC);
+                                $billing_status = $statusRow['status'] ?? 'paid';
+                                ?>
+                                <input type="hidden" class="billing-status" value="<?= htmlspecialchars($billing_status) ?>">
                                 <td class="action-cell">
                                   <button class="action-btn" title="Actions" onclick="toggleMenu(this)">⋯</button>
                                   <div class="action-menu" role="menu">
@@ -351,8 +359,9 @@ $offset = ($page - 1) * $limit;
           <!-- Amount Paid & Change -->
           <div class="form-row" style="margin-top:12px;">
             <div class="form-group" style="flex:1;">
-              <label>Amount Paid (₱)</label>
+              <label id="tx-amount-label">Amount Paid (₱)</label>
               <input type="number" id="tx-amount-paid" placeholder="e.g. 775.10" min="0" step="0.01" style="font-size:1.1rem; font-weight:700;" oninput="calculateChange()">
+              <div id="tx-payment-info" style="font-size:0.75rem; color:var(--gray-400); margin-top:4px;"></div>
             </div>
             <div class="form-group" style="flex:1;">
               <label>Change (₱)</label>
@@ -458,6 +467,31 @@ $offset = ($page - 1) * $limit;
   </div>
 
     <script>
+        // Update status badges on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.tx-status-badge').forEach(badge => {
+                const row = badge.closest('tr');
+                if (row) {
+                    const billingStatusInput = row.querySelector('.billing-status');
+                    if (billingStatusInput) {
+                        const status = billingStatusInput.value;
+                        badge.classList.remove('badge-completed', 'badge-partial', 'badge-pending');
+                        
+                        if (status === 'partial') {
+                            badge.classList.add('badge-partial');
+                            badge.textContent = 'PARTIAL PAYMENT';
+                        } else if (status === 'paid') {
+                            badge.classList.add('badge-completed');
+                            badge.textContent = 'COMPLETED';
+                        } else {
+                            badge.classList.add('badge-pending');
+                            badge.textContent = 'PENDING';
+                        }
+                    }
+                }
+            });
+        });
+
         /* ============================================================
            NAVBAR — active links, dropdowns, hamburger, breadcrumb
         ============================================================ */
@@ -627,7 +661,18 @@ $offset = ($page - 1) * $limit;
 
                     const d = res.data;
 
-                    if (d.transaction_exists) {
+                    if (d.already_paid) {
+                        statusEl.textContent = '✅ This billing is already marked as fully paid';
+                        statusEl.style.color = 'var(--green)';
+                        autofillSection.style.display = 'none';
+                        submitBtn.disabled = true;
+                        submitBtn.style.opacity = '0.5';
+                        _txBillingData = null;
+                        return;
+                    }
+
+                    // Allow both first transaction and additional payments for partial payments
+                    if (d.transaction_exists && !d.is_partial) {
                         statusEl.textContent = '⚠️ A transaction already exists for this receipt';
                         statusEl.style.color = 'var(--amber)';
                         autofillSection.style.display = 'none';
@@ -637,30 +682,43 @@ $offset = ($page - 1) * $limit;
                         return;
                     }
 
-                    if (d.already_paid) {
-                        statusEl.textContent = '✅ This billing is already marked as paid';
-                        statusEl.style.color = 'var(--green)';
-                        autofillSection.style.display = 'none';
-                        submitBtn.disabled = true;
-                        submitBtn.style.opacity = '0.5';
-                        _txBillingData = null;
-                        return;
-                    }
-
                     // Success — fill in the data
                     _txBillingData = d;
-                    statusEl.textContent = '✅ Receipt found — billing details loaded';
-                    statusEl.style.color = 'var(--green)';
+                    
+                    // Different message for partial payments
+                    if (d.is_partial) {
+                        statusEl.textContent = '📝 Partial payment found — add additional payment to complete';
+                        statusEl.style.color = 'var(--blue)';
+                    } else {
+                        statusEl.textContent = '✅ Receipt found — billing details loaded';
+                        statusEl.style.color = 'var(--green)';
+                    }
 
                     document.getElementById('tx-hh').textContent = d.household_id || 'N/A';
                     document.getElementById('tx-name').textContent = d.full_name || 'N/A';
                     document.getElementById('tx-period').textContent = d.billing_month || 'N/A';
                     document.getElementById('tx-usage').textContent = (d.usage_m3 || 0) + ' m³';
                     document.getElementById('tx-rate').textContent = '₱' + (d.rate || 0);
-                    document.getElementById('tx-amount-due').textContent = '₱' + parseFloat(d.amount_due || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-                    // Pre-fill amount paid with amount due
-                    document.getElementById('tx-amount-paid').value = parseFloat(d.amount_due || 0).toFixed(2);
+                    // Show remaining balance for partial payments, or full amount for new payments
+                    const displayAmount = d.is_partial ? parseFloat(d.remaining_balance || 0) : parseFloat(d.amount_due || 0);
+                    document.getElementById('tx-amount-due').textContent = '₱' + displayAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                    
+                    // Update label and payment info based on payment type
+                    const amountLabel = document.getElementById('tx-amount-label');
+                    const paymentInfo = document.getElementById('tx-payment-info');
+                    
+                    if (d.is_partial) {
+                        amountLabel.textContent = 'Amount to Pay (₱)';
+                        paymentInfo.innerHTML = `📝 Previous payment: ₱${parseFloat(d.total_paid).toFixed(2)} | Remaining: ₱${displayAmount.toFixed(2)}`;
+                        paymentInfo.style.color = 'var(--blue)';
+                    } else {
+                        amountLabel.textContent = 'Amount Paid (₱)';
+                        paymentInfo.innerHTML = '';
+                    }
+                    
+                    // Pre-fill amount paid with remaining balance for partial payments
+                    document.getElementById('tx-amount-paid').value = displayAmount.toFixed(2);
                     calculateChange(); // Initialize change
 
                     autofillSection.style.display = 'block';
@@ -681,7 +739,10 @@ $offset = ($page - 1) * $limit;
 
         function calculateChange() {
             if (!_txBillingData) return;
-            const due = parseFloat(_txBillingData.amount_due) || 0;
+            // Use remaining_balance for partial payments, otherwise use amount_due
+            const due = _txBillingData.is_partial ? 
+                parseFloat(_txBillingData.remaining_balance) || 0 : 
+                parseFloat(_txBillingData.amount_due) || 0;
             const paid = parseFloat(document.getElementById('tx-amount-paid').value) || 0;
             const changeInput = document.getElementById('tx-change');
             
@@ -761,6 +822,8 @@ $offset = ($page - 1) * $limit;
             document.getElementById('tx-autofill-section').style.display = 'none';
             document.getElementById('tx-amount-paid').value = '';
             document.getElementById('tx-change').value = '';
+            document.getElementById('tx-payment-info').innerHTML = '';
+            document.getElementById('tx-amount-label').textContent = 'Amount Paid (₱)';
             document.getElementById('tx-proof-input').value = '';
             document.getElementById('tx-proof-preview').innerHTML = '<span style="font-size:1.2rem; margin-bottom:2px;">📸</span><span style="font-size:0.7rem; font-weight:700; color:var(--gray-400); text-transform:uppercase;">Click to Upload Proof</span>';
             document.getElementById('btnRecordTx').disabled = true;

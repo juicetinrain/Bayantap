@@ -13,6 +13,9 @@ $smtp_user = get_setting('smtp_user', '');
 $smtp_pass = get_setting('smtp_pass', '');
 $smtp_from_email = get_setting('smtp_from_email', '');
 $smtp_from_name = get_setting('smtp_from_name', 'BayanTap Water District');
+
+$stmt = $pdo->query("SELECT id, username, role FROM users ORDER BY id ASC");
+$users = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -41,6 +44,15 @@ $smtp_from_name = get_setting('smtp_from_name', 'BayanTap Water District');
     .btn-save { background: var(--blue); color: #fff; padding: 12px 24px; border: none; border-radius: var(--radius-sm); font-weight: 700; cursor: pointer; transition: background .2s; }
     .btn-save:hover { background: var(--blue-dark); }
     .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+    .users-table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+    .users-table th, .users-table td { padding: 14px 12px; border-bottom: 1px solid var(--gray-100); }
+    .users-table th { text-align: left; font-size: .85rem; color: var(--gray-500); font-weight: 700; }
+    .users-table td { vertical-align: middle; }
+    .user-input { width: 100%; max-width: 220px; padding: 10px 14px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-size: .95rem; outline: none; transition: border-color .2s; }
+    .user-input:focus { border-color: var(--blue); }
+    .user-action-button { background: #0f766e; color: #fff; padding: 10px 16px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 700; }
+    .user-action-button:hover { background: #115e59; }
+    .user-role { color: var(--gray-500); font-size: .9rem; }
   </style>
 </head>
 <body>
@@ -123,6 +135,37 @@ $smtp_from_name = get_setting('smtp_from_name', 'BayanTap Water District');
         <button class="btn-save" style="background: var(--gray-100); color: var(--gray-700);" id="testBtn" onclick="testEmail()">🧪 Test SMTP</button>
         <button class="btn-save" id="saveBtn" onclick="saveSettings()">Save Configuration</button>
       </div>
+
+      <div class="section-title">User Accounts</div>
+      <p style="margin: 0 0 16px; color: var(--gray-500);">View and update login names or reset passwords for portal users.</p>
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Role</th>
+            <th>Username</th>
+            <th>New Password</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($users as $user): ?>
+            <tr data-user-id="<?= htmlspecialchars($user['id']) ?>">
+              <td><?= htmlspecialchars($user['username']) ?></td>
+              <td><span class="user-role"><?= htmlspecialchars(ucfirst($user['role'])) ?></span></td>
+              <td>
+                <input type="text" class="user-input user-username" value="<?= htmlspecialchars($user['username']) ?>">
+              </td>
+              <td>
+                <input type="password" class="user-input user-password" placeholder="Leave blank to keep current password">
+              </td>
+              <td>
+                <button class="user-action-button" type="button" onclick="saveUser(<?= htmlspecialchars($user['id']) ?>)">Save</button>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -194,6 +237,45 @@ $smtp_from_name = get_setting('smtp_from_name', 'BayanTap Water District');
       } finally {
         btn.disabled = false;
         btn.textContent = '🧪 Test SMTP';
+      }
+    }
+
+    async function saveUser(userId) {
+      const row = document.querySelector(`[data-user-id="${userId}"]`);
+      if (!row) return;
+
+      const usernameInput = row.querySelector('.user-username');
+      const passwordInput = row.querySelector('.user-password');
+      const btn = row.querySelector('.user-action-button');
+      const username = usernameInput.value.trim();
+      const newPassword = passwordInput.value;
+
+      if (!username) {
+        alert('Username cannot be empty.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      try {
+        const response = await fetch('api_update_user.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: userId, username: username, new_password: newPassword })
+        });
+        const res = await response.json();
+        if (res.success) {
+          alert('User updated successfully.');
+          passwordInput.value = '';
+        } else {
+          alert('Error: ' + res.message);
+        }
+      } catch (err) {
+        alert('Failed to update the user account.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save';
       }
     }
   </script>

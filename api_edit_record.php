@@ -43,15 +43,24 @@ try {
     // Always generate a receipt_no so it can be looked up from the transactions page
     $receipt_no_gen = 'MV-' . date('Y') . '-' . str_pad($data['billing_id'], 4, '0', STR_PAD_LEFT);
 
+    // Check current status
+    $statusStmt = $pdo->prepare("SELECT status FROM billings WHERE id = ?");
+    $statusStmt->execute([$data['billing_id']]);
+    $current_status = $statusStmt->fetchColumn();
+
+    // If status is 'started', change to 'pending' after editing
+    $new_status = ($current_status === 'started') ? 'pending' : $current_status;
+
     // Build update query — status is NO LONGER editable from billings page
     // We preserve the existing status; only the transactions page can set it to 'paid'
-    $sql = "UPDATE billings SET previous_reading = ?, current_reading = ?, usage_m3 = ?, amount_due = ?, receipt_no = COALESCE(receipt_no, ?)";
+    $sql = "UPDATE billings SET previous_reading = ?, current_reading = ?, usage_m3 = ?, amount_due = ?, receipt_no = COALESCE(receipt_no, ?), status = ?";
     $params = [
         (float)($data['previous_reading'] ?? 0),
         (float)($data['current_reading'] ?? 0),
         (float)($data['usage_m3'] ?? 0),
         (float)($data['amount_due'] ?? 0),
-        $receipt_no_gen
+        $receipt_no_gen,
+        $new_status
     ];
 
     if ($current_img_name) {

@@ -77,6 +77,15 @@ try {
     $mail->Password = $smtp_pass;
     $mail->SMTPSecure = ($smtp_port == 465) ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port = $smtp_port;
+    $mail->SMTPDebug = 0; // Set to 2 for detailed debug output
+    $mail->SMTPOptions = array(
+        'ssl' => array(
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true
+        )
+    );
+    $mail->Timeout = 30;
 
     // Sender & Recipient
     $mail->setFrom($smtp_user, $smtp_from_name);

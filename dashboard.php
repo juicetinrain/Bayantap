@@ -212,6 +212,17 @@ if ($selected_month === 'all') {
                 $usage_range = $row['previous_reading'] . " → " . $row['current_reading'];
                 $amount = "₱" . number_format($row['amount_due'], 2);
 
+                // Calculate remaining balance for partial payments
+                $remaining_balance = $row['amount_due'];
+                if ($row['status'] === 'partial') {
+                    $paidStmt = $pdo->prepare("SELECT SUM(amount_paid) as total_paid FROM transactions WHERE receipt_no = ?");
+                    $paidStmt->execute([$row['receipt_no']]);
+                    $paidRow = $paidStmt->fetch(PDO::FETCH_ASSOC);
+                    $total_paid = (float)($paidRow['total_paid'] ?? 0);
+                    $remaining_balance = (float)$row['amount_due'] - $total_paid;
+                    $amount = "₱" . number_format($remaining_balance, 2) . " <span style='font-size:0.75rem; color:var(--gray-400);'>(remaining)</span>";
+                }
+
                 $current_month_comp = date('M Y');
                 $is_past_month = ($row['billing_month'] !== $current_month_comp && 
                                  strtotime("01 " . $row['billing_month']) < strtotime("01 " . $current_month_comp));
@@ -222,6 +233,9 @@ if ($selected_month === 'all') {
                 } elseif ($row['status'] === 'started') {
                   $status_chip = '<span class="status-chip chip-started">STARTED</span>';
                   $date_text = "New Account";
+                } elseif ($row['status'] === 'partial') {
+                  $status_chip = '<span class="status-chip chip-partial" style="background:#e0e7ff;color:#4f46e5;">PARTIAL PAYMENT</span>';
+                  $date_text = "Partially Paid";
                 } elseif ($is_past_month) {
                   $status_chip = '<span class="status-chip chip-unpaid">OVERDUE</span>';
                   $date_text = "Overdue (" . $row['billing_month'] . ")";
@@ -261,7 +275,14 @@ if ($selected_month === 'all') {
                     </div>
                   </td>
                   <td><span class="amount">
-                      <?= htmlspecialchars($amount) ?>
+                      <?php
+                      // Display amount with remaining label for partial payments
+                      if ($row['status'] === 'partial') {
+                          echo $amount;
+                      } else {
+                          echo htmlspecialchars($amount);
+                      }
+                      ?>
                     </span></td>
                   <td>
                     <?= $status_chip ?>
